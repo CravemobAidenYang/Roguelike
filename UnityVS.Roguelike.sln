@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
+# Visual Studio 2015
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityVS.Roguelike.CSharp", "UnityVS.Roguelike.CSharp.csproj", "{90E0312E-F02F-C2FD-A8A3-DB5F35B9148E}"
 EndProject
 Global

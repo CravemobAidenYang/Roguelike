@@ -37,7 +37,7 @@ public class MapGenerator : MonoBehaviour
     public int _NumOfSteps;
 
     Cell[,] _Map;
-    Tile[,] _Tiles;
+    //Tile[,] _Tiles;
 
 	// Use this for initialization
     void Awake()
@@ -56,7 +56,8 @@ public class MapGenerator : MonoBehaviour
     void Init()
     {
         _Map = new Cell[_MapSize.width, _MapSize.height];
-        _Tiles = new Tile[_MapSize.width, _MapSize.height];
+        TileManager.Instance.CreateTileMap(_MapSize);
+        //_Tiles = new Tile[_MapSize.width, _MapSize.height];
     }
 
     void Start()
@@ -66,23 +67,6 @@ public class MapGenerator : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetMouseButtonDown(0))
-        {
-            var playerGO = Instantiate(_Player) as GameObject;
-            var player = playerGO.GetComponent<Player>();
-
-            for (int x = 0; x < _MapSize.width; ++x)
-            {
-                for (int y = 0; y < _MapSize.height; ++y)
-                {
-                    if (_Tiles[x, y].IsWalkable)
-                    {
-                        player.Init(new Vector2(x, y));
-                        return;
-                    }
-                }
-            }
-        }
     }
 
     void MapInit(Cell[,] map)
@@ -157,6 +141,7 @@ public class MapGenerator : MonoBehaviour
 
     void SetTilesOnMap(Cell[,] map)
     {
+        var tileMap = TileManager.Instance.GetTileMap();
         for (int x = 0; x < _MapSize.width; ++x)
         {
             for (int y = 0; y < _MapSize.height; ++y)
@@ -166,7 +151,7 @@ public class MapGenerator : MonoBehaviour
                 tileGO.transform.SetParent(_TileGroup);
 
                 tile.Init(x, y, map[x, y].Alive);
-                _Tiles[x, y] = tile;
+                tileMap[x, y] = tile;
             }
         }
     }
@@ -181,35 +166,5 @@ public class MapGenerator : MonoBehaviour
         }
 
         SetTilesOnMap(_Map);
-    }
-
-    public bool IsValidPos(Vector2 pos)
-    {
-        if (pos.x < 0 || pos.x >= _MapSize.width || pos.y < 0 || pos.y >= _MapSize.height)
-        {
-            return false;
-        }
-        return true;
-    }
-
-    public Tile GetTile(Vector2 pos)
-    {
-        if (!IsValidPos(pos))
-        {
-            return null;
-        }
-        return _Tiles[(int)pos.x, (int)pos.y];
-    }
-
-    public bool IsWalkableTile(Vector2 pos)
-    {
-        if(!IsValidPos(pos))
-        {
-            return false;
-        }
-        else
-        {
-            return _Tiles[(int)pos.x, (int)pos.y].IsWalkable;
-        }
     }
 }

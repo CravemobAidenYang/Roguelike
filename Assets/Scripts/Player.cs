@@ -36,8 +36,8 @@ public class Player : MonoBehaviour
 
     void Move(Vector2 targetPos)
     {
-        MapGenerator.Instance.GetTile(_Pos).IsWalkable = true;
-        MapGenerator.Instance.GetTile(targetPos).IsWalkable = false;
+        TileManager.Instance.GetTile(_Pos).IsWalkable = true;
+        TileManager.Instance.GetTile(targetPos).IsWalkable = false;
         StartCoroutine(Move_Internal(targetPos));
         _Pos = targetPos;
     }
@@ -62,7 +62,7 @@ public class Player : MonoBehaviour
             targetPos.x++;
         }
 
-        if(MapGenerator.Instance.IsWalkableTile(targetPos))
+        if(TileManager.Instance.IsWalkableTile(targetPos))
         {
             Move(targetPos);
             return true;
@@ -84,6 +84,6 @@ public class Player : MonoBehaviour
         _CachedTransform = transform;
 
         _CachedTransform.position = pos;
-        MapGenerator.Instance.GetTile(pos).IsWalkable = false;
+        TileManager.Instance.GetTile(pos).IsWalkable = false;
     }
 }
