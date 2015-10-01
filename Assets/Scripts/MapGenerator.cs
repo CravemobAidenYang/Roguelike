@@ -56,7 +56,6 @@ public class MapGenerator : MonoBehaviour
     void Init()
     {
         _Map = new Cell[_MapSize.width, _MapSize.height];
-        TileManager.Instance.CreateTileMap(_MapSize);
         //_Tiles = new Tile[_MapSize.width, _MapSize.height];
     }
 
@@ -141,6 +140,7 @@ public class MapGenerator : MonoBehaviour
 
     void SetTilesOnMap(Cell[,] map)
     {
+        TileManager.Instance.CreateTileMap(_MapSize);
         var tileMap = TileManager.Instance.GetTileMap();
         for (int x = 0; x < _MapSize.width; ++x)
         {
