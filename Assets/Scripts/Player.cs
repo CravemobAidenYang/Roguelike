@@ -2,12 +2,12 @@
 using System.Collections;
 
 
-public class Player : MonoBehaviour 
+public class Player : Unit 
 {
     public float _Speed;
 
     Transform _CachedTransform;
-    Vector2 _Pos;
+    //Position _Pos;
 
     //이동 등의 작업이 진행 중이면 트루
     bool _IsProcessing = false;
@@ -15,6 +15,7 @@ public class Player : MonoBehaviour
 	// Use this for initialization
 	void Awake () 
     {
+        print("Player Awake");
         _CachedTransform = transform;
 	}
 
@@ -34,30 +35,30 @@ public class Player : MonoBehaviour
         }
     }
 
-    void Move(Vector2 targetPos)
+    void Move(Position targetPos)
     {
-        TileManager.Instance.GetTile(_Pos).IsWalkable = true;
-        TileManager.Instance.GetTile(targetPos).IsWalkable = false;
-        StartCoroutine(Move_Internal(targetPos));
+        TileManager.Instance.GetTile(_Pos).state = TileState.UNWALKABLE;
+        TileManager.Instance.GetTile(targetPos).state = TileState.WALKABLE;
+        StartCoroutine(Move_Internal(targetPos.vector));
         _Pos = targetPos;
     }
 
     bool CheckInput()
     {
-        Vector2 targetPos = _Pos;
-        if (Input.GetKeyDown(KeyCode.UpArrow))
+        Position targetPos = _Pos;
+        if (Input.GetKey(KeyCode.UpArrow))
         {
             targetPos.y++;
         }
-        else if (Input.GetKeyDown(KeyCode.DownArrow))
+        else if (Input.GetKey(KeyCode.DownArrow))
         {
             targetPos.y--;
         }
-        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+        else if (Input.GetKey(KeyCode.LeftArrow))
         {
             targetPos.x--;
         }
-        else if (Input.GetKeyDown(KeyCode.RightArrow))
+        else if (Input.GetKey(KeyCode.RightArrow))
         {
             targetPos.x++;
         }
@@ -75,15 +76,16 @@ public class Player : MonoBehaviour
         if(!_IsProcessing && CheckInput())
         {
             //다른 유닛 프로세싱...
+            Monster.ProcessAllMonster();
         }
     }
 
-    public void Init(Vector2 pos)
+    public void Init(Position pos)
     {
         _Pos = pos;
         _CachedTransform = transform;
 
-        _CachedTransform.position = pos;
-        TileManager.Instance.GetTile(pos).IsWalkable = false;
+        _CachedTransform.position = pos.vector;
+        TileManager.Instance.GetTile(pos).state = TileState.UNWALKABLE;
     }
 }

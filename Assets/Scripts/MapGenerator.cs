@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public struct Size
 {
@@ -9,6 +10,25 @@ public struct Size
     {
         this.width = width;
         this.height = height;
+    }
+}
+
+public struct Position
+{
+    public int x, y;
+
+    public Position(int x, int y)
+    {
+        this.x = x;
+        this.y = y;
+    }
+
+    public Vector2 vector
+    {
+        get
+        {
+            return new Vector2(x, y);
+        }
     }
 }
 
@@ -76,12 +96,12 @@ public class MapGenerator : MonoBehaviour
             {
                 if (x == 0 || x == _MapSize.width - 1 || y == 0 || y == _MapSize.height - 1)
                 {
-                    map[x, y] = new Cell(false);
+                    map[x, y] = new Cell(new Position(x, y), false);
                 }
                 else
                 {
                     bool alive = (Random.Range(0f, 1f) <= _StartAliveChance);
-                    map[x, y] = new Cell(alive);
+                    map[x, y] = new Cell(new Position(x, y), alive);
                 }
             }
         }
@@ -150,7 +170,14 @@ public class MapGenerator : MonoBehaviour
                 var tile = tileGO.GetComponent<Tile>();
                 tileGO.transform.SetParent(_TileGroup);
 
-                tile.Init(x, y, map[x, y].Alive);
+                if (map[x, y].Alive)
+                {
+                    tile.Init(x, y, TileState.WALKABLE);
+                }
+                else
+                {
+                    tile.Init(x, y, TileState.UNWALKABLE);
+                }
                 tileMap[x, y] = tile;
             }
         }

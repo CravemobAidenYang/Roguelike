@@ -1,8 +1,11 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class TileManager : MonoBehaviour
 {
+    public GameObject _PlayerPrefab;
+
     static TileManager _Instance = null;
 
     public static TileManager Instance
@@ -29,6 +32,15 @@ public class TileManager : MonoBehaviour
         }
 	}
 	
+    void Update()
+    {
+        List<List<Position>> regionList;
+        if (Input.GetMouseButtonDown(0))
+        {
+            regionList = GetGroundRegions();
+        }
+    }
+
 	public void CreateTileMap(Size size)
     {
         _Tiles = new Tile[size.width, size.height];
@@ -40,7 +52,7 @@ public class TileManager : MonoBehaviour
         return _Tiles;
     }
 
-    public bool IsValidPos(Vector2 pos)
+    public bool IsValidPos(Position pos)
     {
         if (pos.x < 0 || pos.x >= _Size.width || pos.y < 0 || pos.y >= _Size.height)
         {
@@ -49,7 +61,66 @@ public class TileManager : MonoBehaviour
         return true;
     }
 
-    public Tile GetTile(Vector2 pos)
+    List<List<Position>> GetGroundRegions()
+    {
+        List<List<Position>> regionList = new List<List<Position>>();
+        var checkedFlags = new bool[_Size.width, _Size.height];
+
+        for (int x = 0; x < _Size.width; ++x)
+        {
+            for (int y = 0; y < _Size.height; ++y)
+            {
+                if(!checkedFlags[x, y] && _Tiles[x, y].IsWalkable)
+                {
+                    var region = GetRegionTiles(new Position(x, y));
+                    regionList.Add(region);
+
+                    foreach(var pos in region)
+                    {
+                        checkedFlags[pos.x, pos.y] = true;
+                    }
+                }
+            }
+        }
+
+        return regionList;
+    }
+
+    List<Position> GetRegionTiles(Position startPos)
+    {
+        var regionTileList = new List<Position>();
+        var checkedFlags = new bool[_Size.width, _Size.height];
+        var queue = new Queue<Position>();
+
+        checkedFlags[startPos.x, startPos.y] = true;
+        queue.Enqueue(startPos);
+
+        while(queue.Count > 0)
+        {
+            var pos = queue.Dequeue();
+            regionTileList.Add(pos);
+
+            for (int x = pos.x - 1; x <= pos.x + 1; ++x)
+            {
+                for (int y = pos.y - 1; y <= pos.y + 1; ++y)
+                {
+                    if(!checkedFlags[x, y] && (x == pos.x || y == pos.y))
+                    {
+                        var newPos = new Position(x, y);
+                        if(IsValidPos(newPos) && _Tiles[x, y].state == _Tiles[startPos.x, startPos.y].state)
+                        {
+                            checkedFlags[newPos.x, newPos.y] = true;
+                            queue.Enqueue(newPos);
+                        }
+                    }
+                }
+            }
+        }
+
+        return regionTileList;
+    }
+
+    public Tile GetTile(Position pos)
     {
         if (!IsValidPos(pos))
         {
@@ -58,7 +129,7 @@ public class TileManager : MonoBehaviour
         return _Tiles[(int)pos.x, (int)pos.y];
     }
 
-    public bool IsWalkableTile(Vector2 pos)
+    public bool IsWalkableTile(Position pos)
     {
         if (!IsValidPos(pos))
         {

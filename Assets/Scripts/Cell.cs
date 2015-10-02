@@ -5,6 +5,8 @@ public struct Cell
 {
     bool _Alive;
 
+    Position _Pos;
+
     public bool Alive
     {
         get
@@ -17,8 +19,9 @@ public struct Cell
         }
     }
 
-    public Cell(bool alive)
+    public Cell(Position pos, bool alive)
     {
+        _Pos = pos;
         _Alive = alive;
     }
 

@@ -1,24 +1,35 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+public enum TileState { WALKABLE, UNWALKABLE};
+
 public class Tile : MonoBehaviour 
 {
-    public Vector2 pos;
+    Position _Pos;
 
     SpriteRenderer _SprRenderer;
     BoxCollider2D _BoxCollider;
     Transform _CachedTransform;
 
-    bool _IsWalkable;
+    TileState _State;
+
+    public TileState state
+    {
+        get
+        {
+            return _State;
+        }
+        set
+        {
+            _State = value;
+        }
+    }
+
     public bool IsWalkable
     {
         get
         {
-            return _IsWalkable;
-        }
-        set
-        {
-            _IsWalkable = value;
+            return (_State == TileState.WALKABLE);
         }
     }
 
@@ -30,14 +41,14 @@ public class Tile : MonoBehaviour
         _CachedTransform = transform;
 	}
 	
-	public void Init(int x, int y, bool isWalkable)
+	public void Init(int x, int y, TileState state)
     {
         _CachedTransform.position = new Vector2(x, y);
-        pos = new Vector2(x, y);
+        _Pos = new Position(x, y);
 
-        _IsWalkable = isWalkable;
+        _State = state;
 
-        if(_IsWalkable)
+        if (_State == TileState.WALKABLE)
         {
             _SprRenderer.sprite = TileSpriteManager.Instance.GetRandomGroundSprite();
         }
