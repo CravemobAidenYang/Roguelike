@@ -13,8 +13,22 @@ public class Room : MonoBehaviour
     public int Width { get; set; }
     public int Height { get; set; }
 
-    public Position Min { get; private set; }
-    public Position Max { get; private set; }
+    //Position _Min, _Max;
+    public Position Min
+    { 
+        get
+        {
+            return new Position(_Pos.x - Width / 2, _Pos.y - Height / 2);
+        }
+    }
+
+    public Position Max
+    {
+        get
+        {
+            return new Position(Min.x + Width - 1, Min.y + Height - 1);
+        }
+    }
 
     void Awake()
     {
@@ -25,14 +39,12 @@ public class Room : MonoBehaviour
 
     public void Init(Position pos, int width, int height)
     {
-        _Pos = pos;
-        CachedTransform.position = _Pos.vector;
-
+        SetPos(pos);
         Width = width;
         Height = height;
 
-        Min = new Position(_Pos.x - Width / 2, _Pos.y - Height / 2);
-        Max = new Position(Min.x + width, Max.y + height);
+        //Min = new Position(_Pos.x - Width / 2, _Pos.y - Height / 2);
+        //Max = new Position(Min.x + width, Min.y + height);
 
         _TileStateArr = new TileState[width, height];
 
@@ -42,15 +54,57 @@ public class Room : MonoBehaviour
             {
                 if(x == 0 || y == 0 || x == width - 1 || y == height - 1)
                 {
-                    _TileStateArr[x, y] = TileState.UNWALKABLE;
+                    _TileStateArr[x, y] = TileState.WALL;
                 }
                 else
                 {
-                    _TileStateArr[x, y] = TileState.WALKABLE;
+                    _TileStateArr[x, y] = TileState.GROUND;
                 }
             }
         }
 
-        CachedBoxCollider.size = new Vector2(width, height);
+        CachedBoxCollider.size = new Vector2(width + 2, height + 2);
+    }
+
+    public void SetPos(Position pos)
+    {
+        _Pos = pos;
+        CachedTransform.position = _Pos.vector;
+        //Min = new Position(_Pos.x - Width / 2, _Pos.y - Height / 2);
+        //Max = new Position(_Pos.x + Width / 2, _Pos.y + Height / 2);
+    }
+
+    public void Move(Position moveDistance)
+    {
+        var pos = new Position(_Pos.x + moveDistance.x, _Pos.y + moveDistance.y);
+        SetPos(pos);
+    }
+
+    void Update()
+    {
+        //if(!CachedRigidbody.IsSleeping())
+        {
+            _Pos.x = (int)CachedTransform.position.x;
+            _Pos.y = (int)CachedTransform.position.y;
+            //Min = new Position(_Pos.x - Width / 2, _Pos.y - Height / 2);
+            //Min.x = _Pos.x - Width / 2;
+            //Min.y = _Pos.y - Height / 2;
+
+            //Max = new Position(_Pos.x + Width / 2, _Pos.y + Height / 2);
+            //Max.x = Min.x + Width;
+            //Max.y = Min.y + Height;
+        }
+    }
+
+    void OnDrawGizmos()
+    {
+        //for (int x = Min.x; x <= Max.x; ++x)
+        //{
+        //    for (int y = Min.y; y <= Max.y; ++y)
+        //    {
+        //        Vector3 center = new Vector3((float)x, (float)y);
+        //        Gizmos.DrawCube(center, Vector3.one);
+        //    }
+        //}
     }
 }

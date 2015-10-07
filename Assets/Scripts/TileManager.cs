@@ -4,6 +4,9 @@ using System.Collections.Generic;
 
 public class TileManager : MonoBehaviour
 {
+    //생성된 타일들을 묶어두기 위한 용도
+    public Transform _TileGroup;
+
     public GameObject _PlayerPrefab;
 
     static TileManager _Instance = null;
@@ -107,7 +110,7 @@ public class TileManager : MonoBehaviour
                     if(!checkedFlags[x, y] && (x == pos.x || y == pos.y))
                     {
                         var newPos = new Position(x, y);
-                        if(IsValidPos(newPos) && _Tiles[x, y].state == _Tiles[startPos.x, startPos.y].state)
+                        if(IsValidPos(newPos) && _Tiles[x, y].State == _Tiles[startPos.x, startPos.y].State)
                         {
                             checkedFlags[newPos.x, newPos.y] = true;
                             queue.Enqueue(newPos);
@@ -138,6 +141,22 @@ public class TileManager : MonoBehaviour
         else
         {
             return _Tiles[(int)pos.x, (int)pos.y].IsWalkable;
+        }
+    }
+
+    public Tile GetRandomWalkableTile()
+    {
+        while(true)
+        {
+            int x = Random.Range(0, _Size.width);
+            int y = Random.Range(0, _Size.height);
+
+            var tile = _Tiles[x, y];
+
+            if(tile.State == TileState.GROUND)
+            {
+                return tile;
+            }
         }
     }
 }

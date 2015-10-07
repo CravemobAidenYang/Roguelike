@@ -52,7 +52,7 @@ public class CaveMapGenerator : MapGenerator
 
     void Start()
     {
-        Generate();
+        //Generate();
     }
 
     void Update()
@@ -143,18 +143,18 @@ public class CaveMapGenerator : MapGenerator
 
                 if (map[x, y].Alive)
                 {
-                    tile.Init(x, y, TileState.WALKABLE);
+                    tile.Init(x, y, TileState.GROUND);
                 }
                 else
                 {
-                    tile.Init(x, y, TileState.UNWALKABLE);
+                    tile.Init(x, y, TileState.WALL);
                 }
                 tileMap[x, y] = tile;
             }
         }
     }
 
-	public override void Generate()
+	public override void Generate(VoidCallback callback)
     {
         MapInit(_Map);
 

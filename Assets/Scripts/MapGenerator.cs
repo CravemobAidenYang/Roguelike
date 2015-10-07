@@ -36,9 +36,11 @@ public struct Position
         }
     }
 }
+
+public delegate void VoidCallback();
 public abstract class MapGenerator : MonoBehaviour 
 {
-    public abstract void Generate();
+    public abstract void Generate(VoidCallback callback);
     //{
     //    return false;
     //}

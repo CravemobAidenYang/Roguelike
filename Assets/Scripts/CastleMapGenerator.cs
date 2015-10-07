@@ -6,6 +6,7 @@ using System.Collections.Generic;
 public class CastleMapGenerator : MapGenerator 
 {
     public GameObject _RoomPrefab;
+    public GameObject _TilePrefab;
 
     //생성된 방을 한데 모아두기 위한 용도.
     public Transform _RoomsTransform;
@@ -28,10 +29,11 @@ public class CastleMapGenerator : MapGenerator
     //메인 방들을 연결한 최소 신장 트리
     List<RoomEdge> _MST;
 
-    IEnumerator Generate_Internal()
+    IEnumerator Generate_Internal(VoidCallback callback)
     {
         _RoomList = CreateRooms();
 
+        Time.timeScale = 100f;
         while(true)
         {
             if(IsSeparationComplete())
@@ -40,10 +42,19 @@ public class CastleMapGenerator : MapGenerator
             }
             yield return null;
         }
+        Time.timeScale = 1f;
 
-        var mainRoomList = GetMainRooms();
+        Size tileMapSize = AdjustRoomPos(_RoomList);
 
-        _MST = MakeMST(mainRoomList);
+        var mainRoomList = GetMainRooms(_RoomList);
+
+        CreateTiles(tileMapSize, _RoomList);
+
+        _MST = GetMST(mainRoomList);
+
+        CreateCorridors(_MST);
+
+        callback();
     }
 
     //랜덤한 범위내에서 방을 생성
@@ -56,13 +67,18 @@ public class CastleMapGenerator : MapGenerator
             var pos = Random.insideUnitSphere * radius;
             pos.z = 0f;
 
-            int width = Random.Range(_MinRoomWidth, _MaxRoomWidth);
-            int height = Random.Range(_MinRoomHeight, _MaxRoomHeight);
+            int width = Random.Range(_MinRoomWidth, _MaxRoomWidth + 1);
+            int height = Random.Range(_MinRoomHeight, _MaxRoomHeight + 1);
 
             var roomGO = Instantiate(_RoomPrefab) as GameObject;
             var room = roomGO.GetComponent<Room>();
             room.Init(new Position((int)pos.x, (int)pos.y), width, height);
             room.transform.SetParent(_RoomsTransform);
+
+            if(i == 0)
+            {
+                room.CachedRigidbody.isKinematic = true;
+            }
 
             roomList.Add(room);
         }
@@ -70,32 +86,75 @@ public class CastleMapGenerator : MapGenerator
         return roomList;
     }
 
-    //겹친 방이 없는지 조사 (방 분할이 완료되었는지 파악)
+    //방의 리지드바디의 슬립여부를 판단 (방 분할이 완료되었는지 파악)
     bool IsSeparationComplete()
     {
-        for (int i = 0; i < _RoomList.Count - 1; ++i)
+        for (int i = 0; i < _RoomList.Count; ++i)
         {
-            var roomA = _RoomList[i];
-            for (int j = i + 1; j < _RoomList.Count; ++j)
-            {
-                var roomB = _RoomList[j];
+            var room = _RoomList[i];
 
-                if (roomA.CachedBoxCollider.bounds.Intersects(roomB.CachedBoxCollider.bounds))
-                {
-                    return false;
-                }
+            if(!room.CachedRigidbody.IsSleeping())
+            {
+                return false;
             }
         }
 
         return true;
     }
 
+    //방을 원점으로 밀어낸다.
+    //리턴값은 방을 밀어낸뒤의 전체방을 덮는 사이즈(타일맵의 크기)
+    Size AdjustRoomPos(List<Room> roomList)
+    {
+        for (int i = 0; i < roomList.Count; ++i)
+        {
+            roomList[i].CachedRigidbody.isKinematic = true;
+        }
+
+        Room leftRoom = roomList[0],
+            topRoom = roomList[0],
+            rightRoom = roomList[0],
+            bottomRoom = roomList[0];
+
+        for(int i = 1; i < roomList.Count; ++i)
+        {
+            var room = roomList[i];
+            if(room.Min.x < leftRoom.Min.x)
+            {
+                leftRoom = room;
+            }
+            if (room.Max.x > rightRoom.Max.x)
+            {
+                rightRoom = room;
+            }
+            if (room.Min.y < bottomRoom.Min.y)
+            {
+                bottomRoom = room;
+            }
+            if (room.Max.y > topRoom.Max.y)
+            {
+                topRoom = room;
+            }
+        }
+
+        //테두리는 벽으로 두르기 위해 한칸을 더밀어냄
+        Position dist = new Position(-leftRoom.Min.x + 1, -bottomRoom.Min.y + 1);
+
+        foreach(var room in roomList)
+        {
+            room.Move(dist);
+        }
+
+        //바깥쪽도 한칸을 더 만듬
+        return new Size(rightRoom.Min.x + rightRoom.Width + 1, topRoom.Min.y + topRoom.Height + 1);
+    }
+
     //조건에 맞는 메인 방들을 구함
-    List<Room> GetMainRooms()
+    List<Room> GetMainRooms(List<Room> roomList)
     {
         var mainRoomList = new List<Room>();
 
-        foreach (var room in _RoomList)
+        foreach (var room in roomList)
         {
             if (room.Width >= _MainRoomWidthLimit && room.Height >= _MainRoomHeightLimit)
             {
@@ -106,8 +165,44 @@ public class CastleMapGenerator : MapGenerator
         return mainRoomList;
     }
 
+    //타일을 세팅함.
+    void CreateTiles(Size tileMapSize, List<Room> roomList)
+    {
+        TileManager.Instance.CreateTileMap(tileMapSize);
+        var tileMap = TileManager.Instance.GetTileMap();
+        for (int x = 0; x < tileMapSize.width; ++x)
+        {
+            for (int y = 0; y < tileMapSize.height; ++y)
+            {
+                var tileGO = Instantiate(_TilePrefab) as GameObject;
+                var tile = tileGO.GetComponent<Tile>();
+
+                tile.Init(x, y, TileState.WALL);
+                tileMap[x, y] = tile;
+            }
+        }
+
+        foreach(var room in roomList)
+        {
+            for (int x = room.Min.x; x <= room.Max.x; ++x)
+            {
+                for (int y = room.Min.y; y <= room.Max.y; ++y)
+                {
+                    //if(x == room.Min.x || x == room.Max.x - 1 || y == room.Min.y || y == room.Max.y - 1)
+                    //{
+                    //    continue;
+                    //}
+                    //else
+                    {
+                        tileMap[x, y].State = TileState.GROUND;
+                    }
+                }
+            }
+        }
+    }
+
     //메인 방들을 연결한 최소 신장 트리를 구함.
-    List<RoomEdge> MakeMST(List<Room> mainRoomList)
+    List<RoomEdge> GetMST(List<Room> mainRoomList)
     {
         List<RoomVertex> roomVertexList = new List<RoomVertex>();
         List<RoomEdge> roomEdgeList = new List<RoomEdge>();
@@ -139,54 +234,102 @@ public class CastleMapGenerator : MapGenerator
         return graph.GetMST();
     }
 
+    //씬뷰에 선을 그리기 위한 용도 (디버그용).
+#if DEBUG
+    List<Vector2> startList = new List<Vector2>();
+    List<Vector2> endList = new List<Vector2>();
+#endif
+
     //간선들을 복도로 연결
-    void MakeCorridors(List<RoomEdge> edgeList)
+    void CreateCorridors(List<RoomEdge> edgeList)
     {
-        //복도로 연결
-        //가로 혹은 세로로 한번에 그어서 닿을 수 있으면 그렇게 함.
-        //그게 안되면 ㄱ,ㄴ자로 그음
+        var tileMap = TileManager.Instance.GetTileMap();
 
         foreach(var edge in edgeList)
         {
             var roomA = edge.A.Value;
             var roomB = edge.B.Value;
 
-            //복도를 세로로 그을 수 있으면
-            if (roomA.Min.x <= roomB.Max.x && roomB.Max.x <= roomA.Max.x)
-            {
-                int randomX = Random.Range(roomA.Min.x, roomB.Max.x);
-                //A부터 출발할거임
-                //int dirY = (roomA.Min.y )
-            }
-            else if (roomB.Min.x <= roomA.Max.x && roomA.Max.x <= roomB.Max.x)
-            {
+            var startPos = new Vector2(Random.Range(roomA.Min.x, roomA.Max.x + 1),
+                                        Random.Range(roomA.Min.y, roomA.Max.y + 1));
+            var endPos = new Vector2(Random.Range(roomB.Min.x, roomB.Max.x + 1),
+                                        Random.Range(roomB.Min.y, roomB.Max.y + 1));
 
+
+            //각도를 구한다
+            Vector2 dirVector = startPos - endPos;
+            float angle = Mathf.Atan2(dirVector.y, dirVector.x) * Mathf.Rad2Deg;
+
+            //간선과 일정거리 떨어진 또다른 선을 만든다.
+            var startPosArr = new Vector2[3];
+            var endPosArr = new Vector2[3];
+
+            startPosArr[0] = startPos;
+            endPosArr[0] = endPos;
+
+            Vector2 gap = new Vector2(Mathf.Cos((angle + 90f) * Mathf.Deg2Rad), Mathf.Sin((angle + 90f) * Mathf.Deg2Rad)) * 0.1f;
+            startPosArr[1] = startPos + gap;
+            endPosArr[1] = endPos + gap;
+
+            startPosArr[2] = startPos - gap;
+            endPosArr[2] = endPos - gap;
+
+#if DEBUG
+            startList.AddRange(startPosArr);
+            endList.AddRange(endPosArr);
+#endif
+
+            while (true)
+            {
+                bool clear = true;
+
+                for (int i = 0; i < 3; ++i)
+                {
+                    var hitInfo = Physics2D.Linecast(startPosArr[i], endPosArr[i], 1 << LayerMask.NameToLayer("Tile"));
+                    if (hitInfo.collider)
+                    {
+                        clear = false;
+                        var tile = hitInfo.collider.gameObject.GetComponent<Tile>();
+                        tile.State = TileState.GROUND;
+                    }
+                }
+                if(clear)
+                {
+                    break;
+                }
             }
         }
     }
 
     void Start()
     {
-        Generate();
+        //Generate();
     }
 
     void Update()
     {
-        if(_MST != null)
+#if DEBUG
+        if (_MST != null)
         {
-            foreach(var edge in _MST)
+            foreach (var edge in _MST)
             {
                 Debug.DrawLine(edge.A.Value.CachedTransform.position, edge.B.Value.CachedTransform.position, Color.red);
             }
         }
 
+        if (startList != null && endList != null)
+            for (int i = 0; i < startList.Count; ++i)
+            {
+                Debug.DrawLine(startList[i], endList[i], Color.magenta);
+            }
+#endif
     }
 
-	public override void Generate()
+	public override void Generate(VoidCallback callback)
     {
         Debug.Assert(_MainRoomWidthLimit <= _MaxRoomWidth);
         Debug.Assert(_MainRoomHeightLimit <= _MaxRoomHeight);
 
-        StartCoroutine(Generate_Internal());
+        StartCoroutine(Generate_Internal(callback));
     }
 }

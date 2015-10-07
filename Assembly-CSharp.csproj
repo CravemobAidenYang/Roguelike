@@ -57,6 +57,7 @@
      <Compile Include="Assets\Scripts\CastleMapGenerator.cs" />
      <Compile Include="Assets\Scripts\CaveMapGenerator.cs" />
      <Compile Include="Assets\Scripts\Cell.cs" />
+     <Compile Include="Assets\Scripts\GameManager.cs" />
      <Compile Include="Assets\Scripts\Graph.cs" />
      <Compile Include="Assets\Scripts\MapGenerator.cs" />
      <Compile Include="Assets\Scripts\Monster.cs" />

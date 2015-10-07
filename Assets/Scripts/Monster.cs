@@ -21,6 +21,7 @@ public class Monster : Unit
             monster.PostProcess();
         }
 
+        GameManager.Instance.PlayerTurn = true;
     }
 
     void PreProcess()

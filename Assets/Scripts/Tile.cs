@@ -1,11 +1,19 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public enum TileState { WALKABLE, UNWALKABLE};
+public enum TileState { GROUND, WALL, UNIT};
 
 public class Tile : MonoBehaviour 
 {
     Position _Pos;
+
+    public Position Pos
+    {
+        get
+        {
+            return _Pos;
+        }
+    }
 
     SpriteRenderer _SprRenderer;
     BoxCollider2D _BoxCollider;
@@ -13,7 +21,7 @@ public class Tile : MonoBehaviour
 
     TileState _State;
 
-    public TileState state
+    public TileState State
     {
         get
         {
@@ -21,7 +29,20 @@ public class Tile : MonoBehaviour
         }
         set
         {
-            _State = value;
+            if (_State != value)
+            {
+                _State = value;
+                if (value != TileState.UNIT && _State == TileState.GROUND)
+                {
+                    _SprRenderer.sprite = TileSpriteManager.Instance.GetRandomGroundSprite();
+                    _BoxCollider.enabled = false;
+                }
+                else if(_State == TileState.WALL)
+                {
+                    _SprRenderer.sprite = TileSpriteManager.Instance.GetRandomWallSprite();
+                    _BoxCollider.enabled = true;
+                }
+            }
         }
     }
 
@@ -29,7 +50,7 @@ public class Tile : MonoBehaviour
     {
         get
         {
-            return (_State == TileState.WALKABLE);
+            return (_State == TileState.GROUND);
         }
     }
 
@@ -46,16 +67,8 @@ public class Tile : MonoBehaviour
         _CachedTransform.position = new Vector2(x, y);
         _Pos = new Position(x, y);
 
-        _State = state;
+        this.State = state;
 
-        if (_State == TileState.WALKABLE)
-        {
-            _SprRenderer.sprite = TileSpriteManager.Instance.GetRandomGroundSprite();
-        }
-        else
-        {
-            _SprRenderer.sprite = TileSpriteManager.Instance.GetRandomWallSprite();
-            _BoxCollider.enabled = true;
-        }
+        _CachedTransform.SetParent(TileManager.Instance._TileGroup);
     }
 }
