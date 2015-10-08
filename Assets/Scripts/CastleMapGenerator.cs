@@ -5,6 +5,14 @@ using System.Collections.Generic;
 
 public class CastleMapGenerator : MapGenerator 
 {
+    //static CastleMapGenerator _Instance;
+
+    public static CastleMapGenerator Instance
+    {
+        get;
+        private set;
+    }
+
     public GameObject _RoomPrefab;
     public GameObject _TilePrefab;
 
@@ -25,6 +33,25 @@ public class CastleMapGenerator : MapGenerator
     public int _MainRoomHeightLimit;
 
     List<Room> _RoomList;
+
+    //플레이어가 시작하는 방과 보스방
+    Room _PlayerRoom, _BossRoom;
+
+    public Room PlayerRoom
+    {
+        get
+        {
+            return _PlayerRoom;
+        }
+    }
+
+    public Room BossRoom
+    {
+        get
+        {
+            return _BossRoom;
+        }
+    }
 
     //메인 방들을 연결한 최소 신장 트리
     List<RoomEdge> _MST;
@@ -53,6 +80,8 @@ public class CastleMapGenerator : MapGenerator
         _MST = GetMST(mainRoomList);
 
         CreateCorridors(_MST);
+
+        CreateMonsters(mainRoomList);
 
         callback();
     }
@@ -201,7 +230,7 @@ public class CastleMapGenerator : MapGenerator
         }
     }
 
-    //메인 방들을 연결한 최소 신장 트리를 구함.
+    //메인 방들을 연결한 최소 신장 트리를 구하고 보스방과 플레이어방을 선택.
     List<RoomEdge> GetMST(List<Room> mainRoomList)
     {
         List<RoomVertex> roomVertexList = new List<RoomVertex>();
@@ -231,7 +260,12 @@ public class CastleMapGenerator : MapGenerator
 
         //그래프로 만든뒤 MST를 구한다.
         RoomGraph graph = new RoomGraph(roomVertexList, roomEdgeList);
-        return graph.GetMST();
+        var mst =  graph.GetMST();
+
+        //플레이어 방과 보스방을고름
+        SelectPlayerRoomAndBossRoom(mst, roomVertexList);
+
+        return mst;
     }
 
     //씬뷰에 선을 그리기 위한 용도 (디버그용).
@@ -243,37 +277,57 @@ public class CastleMapGenerator : MapGenerator
     //간선들을 복도로 연결
     void CreateCorridors(List<RoomEdge> edgeList)
     {
-        var tileMap = TileManager.Instance.GetTileMap();
 
         foreach(var edge in edgeList)
         {
             var roomA = edge.A.Value;
             var roomB = edge.B.Value;
 
-            var startPos = new Vector2(Random.Range(roomA.Min.x, roomA.Max.x + 1),
-                                        Random.Range(roomA.Min.y, roomA.Max.y + 1));
-            var endPos = new Vector2(Random.Range(roomB.Min.x, roomB.Max.x + 1),
-                                        Random.Range(roomB.Min.y, roomB.Max.y + 1));
+            Vector2 startPos, endPos;
+            Vector2[] startPosArr = new Vector2[3];
+            Vector2[] endPosArr = new Vector2[3];
 
+            while (true)
+            {
+                startPos.x = Random.Range(roomA.Min.x, roomA.Max.x + 1);
+                startPos.y = Random.Range(roomA.Min.y, roomA.Max.y + 1);
+                endPos.x = Random.Range(roomB.Min.x, roomB.Max.x + 1);
+                endPos.y = Random.Range(roomB.Min.y, roomB.Max.y + 1);
 
-            //각도를 구한다
-            Vector2 dirVector = startPos - endPos;
-            float angle = Mathf.Atan2(dirVector.y, dirVector.x) * Mathf.Rad2Deg;
+                //각도를 구한다
+                Vector2 dirVector = startPos - endPos;
+                float angle = Mathf.Atan2(dirVector.y, dirVector.x) * Mathf.Rad2Deg;
 
-            //간선과 일정거리 떨어진 또다른 선을 만든다.
-            var startPosArr = new Vector2[3];
-            var endPosArr = new Vector2[3];
+                //간선과 일정거리 떨어진 또다른 선을 만든다.
+                startPosArr[0] = startPos;
+                endPosArr[0] = endPos;
 
-            startPosArr[0] = startPos;
-            endPosArr[0] = endPos;
+                Vector2 gap = new Vector2(Mathf.Cos((angle + 90f) * Mathf.Deg2Rad), Mathf.Sin((angle + 90f) * Mathf.Deg2Rad)) * 0.1f;
+                startPosArr[1] = startPos + gap;
+                endPosArr[1] = endPos + gap;
 
-            Vector2 gap = new Vector2(Mathf.Cos((angle + 90f) * Mathf.Deg2Rad), Mathf.Sin((angle + 90f) * Mathf.Deg2Rad)) * 0.1f;
-            startPosArr[1] = startPos + gap;
-            endPosArr[1] = endPos + gap;
+                startPosArr[2] = startPos - gap;
+                endPosArr[2] = endPos - gap;
 
-            startPosArr[2] = startPos - gap;
-            endPosArr[2] = endPos - gap;
+                //먼저 엉뚱한 방과 연결되진 않는지 검사하고 그렇다면 다시 새로운 선을 긋는다.
 
+                bool wrongWay = false;
+                for (int i = 0; i < 3; ++i)
+                {
+                    var hitInfoArr = Physics2D.LinecastAll(startPosArr[i], endPosArr[i], 1 << LayerMask.NameToLayer("Room"));
+
+                    if(IsConnectToWrongRoom(hitInfoArr, roomA, roomB))
+                    {
+                        wrongWay = true;
+                        break;
+                    }
+                }
+
+                if(!wrongWay)
+                {
+                    break;
+                }
+            }
 #if DEBUG
             startList.AddRange(startPosArr);
             endList.AddRange(endPosArr);
@@ -286,7 +340,7 @@ public class CastleMapGenerator : MapGenerator
                 for (int i = 0; i < 3; ++i)
                 {
                     var hitInfo = Physics2D.Linecast(startPosArr[i], endPosArr[i], 1 << LayerMask.NameToLayer("Tile"));
-                    if (hitInfo.collider)
+                    if (hitInfo.collider != null)
                     {
                         clear = false;
                         var tile = hitInfo.collider.gameObject.GetComponent<Tile>();
@@ -301,9 +355,192 @@ public class CastleMapGenerator : MapGenerator
         }
     }
 
-    void Start()
+    //A와 B가 아닌 방과 레이가 충돌했는지를 판단
+    bool IsConnectToWrongRoom(RaycastHit2D[] hitInfoArr, Room roomA, Room roomB)
     {
-        //Generate();
+        for (int i = 0; i < hitInfoArr.Length; ++i)
+        {
+            var hitInfo = hitInfoArr[i];
+
+            if (hitInfo.collider != null)
+            {
+                var room = hitInfo.collider.gameObject.GetComponent<Room>();
+                if (room != roomA && room != roomB)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    void SelectPlayerRoomAndBossRoom(List<RoomEdge> mst, List<RoomVertex> vertexList)
+    {
+        //최소신장트리가 주어졌을때 말단에 위치한 정점들을 찾는다.
+        //그래프를 탐색하며 말단에서 말단끼리 가는 깊이와 가중치를 계산한다.
+        //가장 깊이가 깊고 가중치가 높은 간선에 연결된 방을 시작방과 보스방으로둔다.
+
+        var visitedEdgeList = new List<RoomEdge>();
+        var leafList = new List<RoomVertex>();
+        
+        //말단 노드를 찾는다.
+        foreach(var vertex in vertexList)
+        {
+            int edgeCount = 0;
+            foreach(var edge in mst)
+            {
+                if(edge.A == vertex || edge.B == vertex)
+                {
+                    ++edgeCount;
+                }
+            }
+            if(edgeCount == 1)
+            {
+                leafList.Add(vertex);
+            }
+        }
+
+        WeightInfo maxWeightInfo = new WeightInfo(0, 0);
+
+        for (int i = 0; i < leafList.Count; ++i)
+        {
+            var vertexA = leafList[i];
+            for (int j = 0; j < leafList.Count; ++j)
+            {
+                var vertexB = leafList[j];
+
+                if (vertexA == vertexB)
+                {
+                    continue;
+                }
+
+                WeightInfo? weightInfo = StartSearch(mst, visitedEdgeList, vertexA, vertexB);
+
+                if(weightInfo != null)
+                {
+                    //뎁스를 우선적으로 판별함
+                    if (weightInfo.Value.totalDepth > maxWeightInfo.totalDepth)
+                    {
+                        maxWeightInfo.totalDepth = weightInfo.Value.totalDepth;
+
+                        if ((vertexA.Value.Width + vertexA.Value.Height) > (vertexB.Value.Width + vertexB.Value.Height))
+                        {
+                            _BossRoom = vertexA.Value;
+                            _PlayerRoom = vertexB.Value;
+                        }
+                        else
+                        {
+                            _BossRoom = vertexB.Value;
+                            _PlayerRoom = vertexA.Value;
+                        }
+
+                        print("max depth : " + maxWeightInfo.totalDepth);
+                    }
+                    //뎁스가 같으면 가중치를 봄
+                    else if (weightInfo.Value.totalDepth == maxWeightInfo.totalDepth)
+                    {
+                        if(weightInfo.Value.totalWeight > maxWeightInfo.totalDepth)
+                        {
+                            if ((vertexA.Value.Width + vertexA.Value.Height) > (vertexB.Value.Width + vertexB.Value.Height))
+                            {
+                                _BossRoom = vertexA.Value;
+                                _PlayerRoom = vertexB.Value;
+                            }
+                            else
+                            {
+                                _BossRoom = vertexB.Value;
+                                _PlayerRoom = vertexA.Value;
+                            }
+                        }
+                    }
+                }
+
+                //재탐색을 위해 초기화한다.
+                visitedEdgeList.Clear();
+            }
+        }
+    }
+
+    //방 사이의 간선의 깊이와 비용 합산 정보를 담아둘 용도
+    struct WeightInfo
+    {
+        public int totalDepth;
+        public float totalWeight;
+
+        public WeightInfo(int totalDepth, float totalWeight)
+        {
+            this.totalDepth = totalDepth;
+            this.totalWeight = totalWeight;
+        }
+    }
+
+    //리턴값이 널이면 못찾은거
+    WeightInfo? StartSearch(List<RoomEdge> edgeList, List<RoomEdge> visitedEdgeList, RoomVertex startVertex, RoomVertex endVertex)
+    {
+        WeightInfo weightInfo = new WeightInfo(0, 0);
+
+        if(startVertex == endVertex)
+        {
+            return weightInfo;
+        }
+
+        var connectedEdgeList = new List<RoomEdge>();
+        //연결된 간선을 찾아온다
+        foreach (var edge in edgeList)
+        {
+            if (edge.A == startVertex || edge.B == startVertex)
+            {
+                connectedEdgeList.Add(edge);
+            }
+        }
+
+        foreach (var edge in connectedEdgeList)
+        {
+            if(visitedEdgeList.Contains(edge))
+            {
+                continue;
+            }
+            else
+            {
+                weightInfo.totalDepth = 1;
+                weightInfo.totalWeight = edge.Weight;
+                var anotherVertex = (startVertex == edge.A) ? edge.B : edge.A;
+                visitedEdgeList.Add(edge);
+
+                if(anotherVertex == endVertex)
+                {
+                    return weightInfo;
+                }
+
+                var foundWeightInfo = StartSearch(edgeList, visitedEdgeList, anotherVertex, endVertex);
+                if (foundWeightInfo != null)
+                {
+                    weightInfo.totalDepth += foundWeightInfo.Value.totalDepth;
+                    weightInfo.totalWeight += foundWeightInfo.Value.totalWeight;
+
+                    return weightInfo;
+                }
+            }
+        }
+        return null;
+    }
+
+    void CreateMonsters(List<Room> roomList)
+    {
+        //TODO : 코드가 너무 복잡해져서 다시 롤백함. 몬스터 관련부분 다시 작성해야함
+
+    }
+
+    void Awake()
+    {
+        if(Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(this.gameObject);
+        }
     }
 
     void Update()
@@ -318,10 +555,27 @@ public class CastleMapGenerator : MapGenerator
         }
 
         if (startList != null && endList != null)
+        {
             for (int i = 0; i < startList.Count; ++i)
             {
                 Debug.DrawLine(startList[i], endList[i], Color.magenta);
             }
+        }
+
+        if (_PlayerRoom != null && _BossRoom != null)
+        {
+            Debug.DrawLine(_PlayerRoom.CachedTransform.position, _BossRoom.CachedTransform.position, Color.yellow);
+        }
+
+        if (Input.GetKeyDown(KeyCode.F5))
+        {
+            Player.Instance.gameObject.SetActive(false);
+            Generate(() =>
+            {
+                Player.Instance.Init();
+                Player.Instance.gameObject.SetActive(true);
+            });
+        }
 #endif
     }
 
@@ -330,6 +584,46 @@ public class CastleMapGenerator : MapGenerator
         Debug.Assert(_MainRoomWidthLimit <= _MaxRoomWidth);
         Debug.Assert(_MainRoomHeightLimit <= _MaxRoomHeight);
 
+        TileManager.Instance.DestroyTileMap();
+        Cleanup();
+
         StartCoroutine(Generate_Internal(callback));
     }
+
+
+    void Cleanup()
+    {
+#if DEBUG
+        if (_RoomList != null)
+        {
+            for (int i = 0; i < _RoomList.Count; ++i)
+            {
+                if (_RoomList[i] != null)
+                {
+                    Destroy(_RoomList[i].gameObject);
+                }
+                _RoomList[i] = null;
+            }
+        }
+        _RoomList = null;
+
+        if(_MST != null)
+        {
+            for (int i = 0; i < _MST.Count; ++i)
+            {
+                _MST[i] = null;
+            }
+        }
+        _MST = null;
+
+        startList.Clear();
+        endList.Clear();
+
+        _PlayerRoom = null;
+        _BossRoom = null;
+
+        System.GC.Collect();
+#endif
+    }
+
 }

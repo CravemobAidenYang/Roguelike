@@ -7,8 +7,6 @@ public class TileManager : MonoBehaviour
     //생성된 타일들을 묶어두기 위한 용도
     public Transform _TileGroup;
 
-    public GameObject _PlayerPrefab;
-
     static TileManager _Instance = null;
 
     public static TileManager Instance
@@ -37,17 +35,34 @@ public class TileManager : MonoBehaviour
 	
     void Update()
     {
-        List<List<Position>> regionList;
-        if (Input.GetMouseButtonDown(0))
-        {
-            regionList = GetGroundRegions();
-        }
+        //List<List<Position>> regionList;
+        //if (Input.GetMouseButtonDown(0))
+        //{
+        //    regionList = GetGroundRegions();
+        //}
     }
 
 	public void CreateTileMap(Size size)
     {
+        DestroyTileMap();
         _Tiles = new Tile[size.width, size.height];
         _Size = size;
+    }
+
+    public void DestroyTileMap()
+    {
+        if (_Tiles != null)
+        {
+            foreach(var tile in _Tiles)
+            {
+                if(tile != null)
+                {
+                    Destroy(tile.gameObject);
+                }
+            }
+        }
+        _Tiles = null;
+        _Size = new Size(0, 0);
     }
 
     public Tile[,] GetTileMap()

@@ -7,9 +7,9 @@ public class GameManager : MonoBehaviour
     public TileManager _TileManagerPrefab;
     public Player _PlayerPrefab;
 
-    static GameManager _Instance = null;
+    public bool IsPlayerTurn { get; set; }
 
-    public bool PlayerTurn { get; set; }
+    static GameManager _Instance = null;
 
     public static GameManager Instance
     {
@@ -38,20 +38,21 @@ public class GameManager : MonoBehaviour
         mapGenerator.Generate(() =>
         {
             var player = Instantiate(_PlayerPrefab);
-
-            
         });
     }
 
     void Update()
     {
-        //if (PlayerTurn)
+        //if(Player.Instance != null)
         //{
-        //    Player.Instance.TurnProcess();
-        //}
-        //else
-        //{
-        //    Monster.ProcessAllMonster();
+        //    if (IsPlayerTurn)
+        //    {
+        //        Player.Instance.TurnProcess();
+        //    }
+        //    else
+        //    {
+        //        MonsterManager.Instance.ProcessAllMonster();
+        //    }
         //}
     }
 }

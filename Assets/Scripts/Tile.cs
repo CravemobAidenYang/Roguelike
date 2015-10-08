@@ -29,19 +29,19 @@ public class Tile : MonoBehaviour
         }
         set
         {
-            if (_State != value)
+            if(_State != value)
             {
-                _State = value;
-                if (value != TileState.UNIT && _State == TileState.GROUND)
+                if (_State != TileState.UNIT && value == TileState.GROUND)
                 {
                     _SprRenderer.sprite = TileSpriteManager.Instance.GetRandomGroundSprite();
                     _BoxCollider.enabled = false;
                 }
-                else if(_State == TileState.WALL)
+                else if (value == TileState.WALL)
                 {
                     _SprRenderer.sprite = TileSpriteManager.Instance.GetRandomWallSprite();
                     _BoxCollider.enabled = true;
                 }
+                _State = value;
             }
         }
     }

@@ -28,6 +28,8 @@ namespace Completed
 		//Awake is always called before any Start functions
 		void Awake()
 		{
+            Time.timeScale = 1f;
+
 			//Check if instance already exists
 			if (instance == null)
 				

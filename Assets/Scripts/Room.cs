@@ -80,6 +80,12 @@ public class Room : MonoBehaviour
         SetPos(pos);
     }
 
+    public Position GetRandomPosInRoom()
+    {
+        var pos = new Position(Random.Range(Min.x, Max.x + 1), Random.Range(Min.y, Max.y + 1));
+        return pos;
+    }
+
     void Update()
     {
         //if(!CachedRigidbody.IsSleeping())

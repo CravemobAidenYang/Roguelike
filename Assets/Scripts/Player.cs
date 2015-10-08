@@ -2,7 +2,7 @@
 using System.Collections;
 
 
-public class Player : Unit 
+public class Player : Unit
 {
     public float _Speed;
 
@@ -28,16 +28,11 @@ public class Player : Unit
         if (_Instance == null)
         {
             _Instance = this;
-
-            _CachedTransform = transform;
+            
+            _CachedTransform = GetComponent<Transform>();
             _CachedMainCamTransform = Camera.main.transform;
 
-            var tile = TileManager.Instance.GetRandomWalkableTile();
-            _Pos = tile.Pos;
-            _CachedTransform.position = _Pos.vector;
-            tile.State = TileState.UNIT;
-
-            _CachedMainCamTransform.position = new Vector3(_CachedTransform.position.x, _CachedTransform.position.y, _CachedMainCamTransform.position.z);
+            Init();
         }
         else
         {
@@ -48,11 +43,11 @@ public class Player : Unit
     IEnumerator Move_Internal(Vector3 targetPos)
     {
         _IsProcessing = true;
-        while(true)
+        while (true)
         {
             _CachedTransform.position = Vector2.MoveTowards(_CachedTransform.position, targetPos, _Speed * Time.deltaTime);
-            
-            if(_CachedTransform.position == targetPos)
+
+            if (_CachedTransform.position == targetPos)
             {
                 _IsProcessing = false;
                 break;
@@ -89,7 +84,7 @@ public class Player : Unit
             targetPos.x++;
         }
 
-        if(TileManager.Instance.IsWalkableTile(targetPos))
+        if (TileManager.Instance.IsWalkableTile(targetPos))
         {
             Move(targetPos);
             return true;
@@ -99,7 +94,7 @@ public class Player : Unit
     }
     void Update()
     {
-        if(!_IsProcessing && CheckInput())
+        if (!_IsProcessing && CheckInput())
         {
             //다른 유닛 프로세싱...
             Monster.ProcessAllMonster();
@@ -115,12 +110,16 @@ public class Player : Unit
         _CachedMainCamTransform.position = newCamPos;
     }
 
-    //public void Init(Position pos)
-    //{
-    //    _Pos = pos;
-    //    _CachedTransform = transform;
+    public void Init()
+    {
+        //var tile = TileManager.Instance.GetRandomWalkableTile();
+        var pos = CastleMapGenerator.Instance.PlayerRoom.GetRandomPosInRoom();
+        var tile = TileManager.Instance.GetTile(pos);
 
-    //    _CachedTransform.position = pos.vector;
-    //    TileManager.Instance.GetTile(pos).state = TileState.UNWALKABLE;
-    //}
+        _Pos = pos;
+        _CachedTransform.position = _Pos.vector;
+        tile.State = TileState.UNIT;
+        _IsProcessing = false;
+        _CachedMainCamTransform.position = new Vector3(_CachedTransform.position.x, _CachedTransform.position.y, _CachedMainCamTransform.position.z);
+    }
 }

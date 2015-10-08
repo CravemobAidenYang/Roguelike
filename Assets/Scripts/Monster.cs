@@ -5,10 +5,10 @@ using System.Collections.Generic;
 public class Monster : Unit
 {
     static List<Monster> _MonsterList = new List<Monster>();
-	
+
     public static void ProcessAllMonster()
     {
-        foreach(var monster in _MonsterList)
+        foreach (var monster in _MonsterList)
         {
             monster.PreProcess();
         }
@@ -21,7 +21,7 @@ public class Monster : Unit
             monster.PostProcess();
         }
 
-        GameManager.Instance.PlayerTurn = true;
+        GameManager.Instance.IsPlayerTurn = true;
     }
 
     void PreProcess()

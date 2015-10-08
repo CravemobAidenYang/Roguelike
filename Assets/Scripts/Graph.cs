@@ -95,7 +95,7 @@ public class RoomGraph
         edgeList.AddRange(_EdgeList);
         edgeList.Sort(new RoomEdgeComp());
 
-        UnionFind unionFind = new UnionFind();
+        //UnionFind unionFind = new UnionFind();
 
         while(true)
         {
