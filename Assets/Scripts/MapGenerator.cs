@@ -35,6 +35,16 @@ public struct Position
             return new Vector2(x, y);
         }
     }
+
+    public static bool operator ==(Position a, Position b)
+    {
+        return (a.x == b.x && a.y == b.y);
+    }
+
+    public static bool operator !=(Position a, Position b)
+    {
+        return (a.x != b.x || a.y != b.y);
+    }
 }
 
 public delegate void VoidCallback();

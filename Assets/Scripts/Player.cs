@@ -4,9 +4,8 @@ using System.Collections;
 
 public class Player : Unit
 {
-    public float _Speed;
+    //public float _Speed;
 
-    Transform _CachedTransform;
     Transform _CachedMainCamTransform;
     //Position _Pos;
 
@@ -23,13 +22,12 @@ public class Player : Unit
         }
     }
 
-    void Awake()
+    protected override void OnAwake()
     {
         if (_Instance == null)
         {
             _Instance = this;
-            
-            _CachedTransform = GetComponent<Transform>();
+
             _CachedMainCamTransform = Camera.main.transform;
 
             Init();
@@ -45,9 +43,9 @@ public class Player : Unit
         _IsProcessing = true;
         while (true)
         {
-            _CachedTransform.position = Vector2.MoveTowards(_CachedTransform.position, targetPos, _Speed * Time.deltaTime);
+            CachedTransform.position = Vector2.MoveTowards(CachedTransform.position, targetPos, _Speed * Time.deltaTime);
 
-            if (_CachedTransform.position == targetPos)
+            if (CachedTransform.position == targetPos)
             {
                 _IsProcessing = false;
                 break;
@@ -58,15 +56,15 @@ public class Player : Unit
 
     void Move(Position targetPos)
     {
-        TileManager.Instance.GetTile(_Pos).State = TileState.GROUND;
-        TileManager.Instance.GetTile(targetPos).State = TileState.UNIT;
+        TileManager.Instance.GetTile(Pos).State = TileState.GROUND;
+        TileManager.Instance.GetTile(targetPos).State = TileState.PLAYER;
         StartCoroutine(Move_Internal(targetPos.vector));
-        _Pos = targetPos;
+        Pos = targetPos;
     }
 
     bool CheckInput()
     {
-        Position targetPos = _Pos;
+        Position targetPos = Pos;
         if (Input.GetKey(KeyCode.UpArrow))
         {
             targetPos.y++;
@@ -84,7 +82,7 @@ public class Player : Unit
             targetPos.x++;
         }
 
-        if (TileManager.Instance.IsWalkableTile(targetPos))
+        if (TileManager.Instance.IsGroundTile(targetPos))
         {
             Move(targetPos);
             return true;
@@ -97,14 +95,15 @@ public class Player : Unit
         if (!_IsProcessing && CheckInput())
         {
             //다른 유닛 프로세싱...
-            Monster.ProcessAllMonster();
+            //Monster.ProcessAllMonster();
+            MonsterManager.Instance.ProcessAllMonster();
         }
     }
 
     void LateUpdate()
     {
         var orgCamPos = _CachedMainCamTransform.position;
-        var newCamPos = Vector3.MoveTowards(orgCamPos, _CachedTransform.position, 50 * Time.deltaTime);
+        var newCamPos = Vector3.MoveTowards(orgCamPos, CachedTransform.position, 50 * Time.deltaTime);
         newCamPos.z = orgCamPos.z;
 
         _CachedMainCamTransform.position = newCamPos;
@@ -116,10 +115,10 @@ public class Player : Unit
         var pos = CastleMapGenerator.Instance.PlayerRoom.GetRandomPosInRoom();
         var tile = TileManager.Instance.GetTile(pos);
 
-        _Pos = pos;
-        _CachedTransform.position = _Pos.vector;
-        tile.State = TileState.UNIT;
+        Pos = pos;
+        CachedTransform.position = Pos.vector;
+        tile.State = TileState.PLAYER;
         _IsProcessing = false;
-        _CachedMainCamTransform.position = new Vector3(_CachedTransform.position.x, _CachedTransform.position.y, _CachedMainCamTransform.position.z);
+        _CachedMainCamTransform.position = new Vector3(CachedTransform.position.x, CachedTransform.position.y, _CachedMainCamTransform.position.z);
     }
 }

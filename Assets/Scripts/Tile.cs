@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public enum TileState { GROUND, WALL, UNIT};
+public enum TileState { GROUND, WALL, PLAYER, MONSTER};
 
 public class Tile : MonoBehaviour 
 {
@@ -21,6 +21,46 @@ public class Tile : MonoBehaviour
 
     TileState _State;
 
+    public bool IsUnit
+    {
+        get
+        {
+            return (_State == TileState.MONSTER || _State == TileState.PLAYER);
+        }
+    }
+
+    public bool IsGround
+    {
+        get
+        {
+            return (_State == TileState.GROUND);
+        }
+    }
+
+    public bool IsWall
+    {
+        get
+        {
+            return (_State == TileState.WALL);
+        }
+    }
+
+    public bool IsMonster
+    {
+        get
+        {
+            return (_State == TileState.MONSTER);
+        }
+    }
+
+    public bool IsPlayer
+    {
+        get
+        {
+            return (_State == TileState.PLAYER);
+        }
+    }
+
     public TileState State
     {
         get
@@ -31,7 +71,7 @@ public class Tile : MonoBehaviour
         {
             if(_State != value)
             {
-                if (_State != TileState.UNIT && value == TileState.GROUND)
+                if (!IsUnit && value == TileState.GROUND)
                 {
                     _SprRenderer.sprite = TileSpriteManager.Instance.GetRandomGroundSprite();
                     _BoxCollider.enabled = false;
@@ -43,14 +83,6 @@ public class Tile : MonoBehaviour
                 }
                 _State = value;
             }
-        }
-    }
-
-    public bool IsWalkable
-    {
-        get
-        {
-            return (_State == TileState.GROUND);
         }
     }
 

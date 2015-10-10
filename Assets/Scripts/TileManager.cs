@@ -88,7 +88,7 @@ public class TileManager : MonoBehaviour
         {
             for (int y = 0; y < _Size.height; ++y)
             {
-                if(!checkedFlags[x, y] && _Tiles[x, y].IsWalkable)
+                if(!checkedFlags[x, y] && _Tiles[x, y].IsGround)
                 {
                     var region = GetRegionTiles(new Position(x, y));
                     regionList.Add(region);
@@ -147,7 +147,7 @@ public class TileManager : MonoBehaviour
         return _Tiles[(int)pos.x, (int)pos.y];
     }
 
-    public bool IsWalkableTile(Position pos)
+    public bool IsGroundTile(Position pos)
     {
         if (!IsValidPos(pos))
         {
@@ -155,7 +155,7 @@ public class TileManager : MonoBehaviour
         }
         else
         {
-            return _Tiles[(int)pos.x, (int)pos.y].IsWalkable;
+            return _Tiles[(int)pos.x, (int)pos.y].IsGround;
         }
     }
 

@@ -217,14 +217,7 @@ public class CastleMapGenerator : MapGenerator
             {
                 for (int y = room.Min.y; y <= room.Max.y; ++y)
                 {
-                    //if(x == room.Min.x || x == room.Max.x - 1 || y == room.Min.y || y == room.Max.y - 1)
-                    //{
-                    //    continue;
-                    //}
-                    //else
-                    {
-                        tileMap[x, y].State = TileState.GROUND;
-                    }
+                    tileMap[x, y].State = TileState.GROUND;
                 }
             }
         }
@@ -527,8 +520,20 @@ public class CastleMapGenerator : MapGenerator
 
     void CreateMonsters(List<Room> roomList)
     {
-        //TODO : 코드가 너무 복잡해져서 다시 롤백함. 몬스터 관련부분 다시 작성해야함
+        for (int i = 0; i < 2; ++i)
+        {
+            var monster = MonsterManager.Instance.CreateMonster(0);
 
+            while (true)
+            {
+                var pos = _PlayerRoom.GetRandomPosInRoom();
+                if (TileManager.Instance.IsGroundTile(pos))
+                {
+                    monster.Init(pos);
+                    break;
+                }
+            }
+        }
     }
 
     void Awake()
@@ -569,6 +574,7 @@ public class CastleMapGenerator : MapGenerator
 
         if (Input.GetKeyDown(KeyCode.F5))
         {
+            MonsterManager.Instance.Cleanup();
             Player.Instance.gameObject.SetActive(false);
             Generate(() =>
             {
