@@ -1,51 +1,75 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿//using UnityEngine;
+//using System.Collections;
 
-public abstract class Unit : MonoBehaviour
-{
-    //Position _Pos;
-    public float _Speed;
+//public abstract class Unit : MonoBehaviour
+//{
+//    public int _MaxHP;
+//    protected int _HP;
 
-    Transform _CachedTransform;
+//    public float _Speed;
 
-    protected Transform CachedTransform
-    {
-        get
-        {
-            return _CachedTransform;
-        }
-    }
+//    bool _IsDead;
+//    protected bool IsDead
+//    {
+//        get
+//        {
+//            return _IsDead;
+//        }
+//        set
+//        {
+//            _IsDead = value;
+//        }
+//    }
 
-    private Position _Pos;
-    public Position Pos
-    {
-        get
-        {
-            return _Pos;
-        }
-        protected set
-        {
-            _Pos = value;
-        }
-    }
+//    Transform _CachedTransform;
+//    protected Transform CachedTransform
+//    {
+//        get
+//        {
+//            return _CachedTransform;
+//        }
+//    }
 
-    //현재 Pos에 위치한 타일을 얻어옴
-    public Tile CurTile
-    {
-        get
-        {
-            return TileManager.Instance.GetTile(Pos);
-        }
-    }
+//    private Position _Pos;
+//    public Position Pos
+//    {
+//        get
+//        {
+//            return _Pos;
+//        }
+//        protected set
+//        {
+//            _Pos = value;
+//        }
+//    }
 
-    void Awake()
-    {
-        print("Unit.Awake");
-        _CachedTransform = this.transform;
+//    //현재 Pos에 위치한 타일을 얻어옴
+//    public Tile CurTile
+//    {
+//        get
+//        {
+//            return TileManager.Instance.GetTile(Pos);
+//        }
+//    }
 
-        OnAwake();
-    }
+//    void Awake()
+//    {
+//        print("Unit.Awake");
+//        _CachedTransform = this.transform;
 
-    protected abstract void OnAwake();
+//        OnAwake();
+//    }
 
-}
+//    protected abstract void OnAwake();
+
+
+//    public void Init()
+//    {
+//        _HP = _MaxHP;
+//        _IsDead = false;
+
+//        OnInit();
+//    }
+
+//    protected abstract void OnInit();
+//}

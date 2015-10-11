@@ -33,6 +33,11 @@ public class MonsterManager : MonoBehaviour
         return monster;
     }
 
+    public void RemoveMonsterFromList(Monster monster)
+    {
+        _MonsterList.Remove(monster);
+    }
+
     public Monster GetMonsterByPos(Position pos)
     {
         foreach(var monster in _MonsterList)

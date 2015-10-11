@@ -2,9 +2,50 @@
 using System.Collections;
 using System.Collections.Generic;
 
-public class Monster : Unit
+public class Monster : MonoBehaviour//Unit
 {
+    Transform _CachedTransform;
+    Animator _CachedAnimator;
+
+    public int _MaxHP;
+    protected int _HP;
+
+    public float _Speed;
+
+    Position _Pos;
+    public Position Pos
+    {
+        get
+        {
+            return _Pos;
+        }
+        protected set
+        {
+            _Pos = value;
+        }
+    }
+
+    bool _IsDead;
+    public bool IsDead
+    {
+        get
+        {
+            return _IsDead;
+        }
+    }
+
+    //현재 Pos에 위치한 타일을 얻어옴
+    public Tile CurTile
+    {
+        get
+        {
+            return TileManager.Instance.GetTile(_Pos);
+        }
+    }
+
     public int _HalfAreaX, _HalfAreaY;
+
+    public int _AttackPower;
 
     bool _IsAlreadyActioned = false;
 
@@ -13,8 +54,10 @@ public class Monster : Unit
         _IsAlreadyActioned = false;
     }
 
-    protected override void OnAwake()
+    void Awake()
     {
+        _CachedTransform = this.transform;
+        _CachedAnimator = GetComponent<Animator>();
     }
 
     public void Action()
@@ -32,44 +75,51 @@ public class Monster : Unit
             var up = new Position(0, 1);
             var down = new Position(0, -1);
 
+            if(playerPos == _Pos + left || playerPos == _Pos + right ||
+                playerPos == _Pos + up || playerPos == _Pos + down)
+            {
+                Attack();
+                return;
+            }
+
             //x방향으로의 길이가 더 멀다면 x방향으로의 이동명령을 큐에 먼저넣음.
             //TODO: (메소드 분할 필요)
-            if (Mathf.Abs(playerPos.x - Pos.x) > Mathf.Abs(playerPos.y - Pos.y))
+            if (Mathf.Abs(playerPos.x - _Pos.x) > Mathf.Abs(playerPos.y - _Pos.y))
             {
-                if (playerPos.x > Pos.x)
+                if (playerPos.x > _Pos.x)
                 {
                     moveDirQueue.Enqueue(right);
                 }
-                else if(playerPos.x < Pos.x)
+                else if(playerPos.x < _Pos.x)
                 {
                     moveDirQueue.Enqueue(left);
                 }
 
-                if (playerPos.y > Pos.y)
+                if (playerPos.y > _Pos.y)
                 {
                     moveDirQueue.Enqueue(up);
                 }
-                else if (playerPos.y < Pos.y)
+                else if (playerPos.y < _Pos.y)
                 {
                     moveDirQueue.Enqueue(down);
                 }
             }
             else
             {
-                if (playerPos.y > Pos.y)
+                if (playerPos.y > _Pos.y)
                 {
                     moveDirQueue.Enqueue(up);
                 }
-                else if (playerPos.y < Pos.y)
+                else if (playerPos.y < _Pos.y)
                 {
                     moveDirQueue.Enqueue(down);
                 }
 
-                if (playerPos.x > Pos.x)
+                if (playerPos.x > _Pos.x)
                 {
                     moveDirQueue.Enqueue(right);
                 }
-                else if (playerPos.x < Pos.x)
+                else if (playerPos.x < _Pos.x)
                 {
                     moveDirQueue.Enqueue(left);
                 }
@@ -79,14 +129,44 @@ public class Monster : Unit
         }
     }
 
+    void Attack()
+    {
+        if(!Player.Instance.IsDead)
+        {
+            _CachedAnimator.Play("MonsterAttack");
+            Player.Instance.Hit(_AttackPower);
+        }
+    }
+
+    public void Hit(int damage)
+    {
+        print("Monster.Hit");
+        if (!_IsDead)
+        {
+            _HP -= damage;
+            if (_HP <= 0)
+            {
+                _IsDead = true;
+                Die();
+            }
+        }
+    }
+
+    void Die()
+    {
+        CurTile.State = TileState.GROUND;
+        MonsterManager.Instance.RemoveMonsterFromList(this);
+        this.gameObject.SetActive(false);
+    }
+
     IEnumerator Move_Internal(Vector3 targetPos)
     {
         print("monster move internal");
         while (true)
         {
-            CachedTransform.position = Vector2.MoveTowards(CachedTransform.position, targetPos, _Speed * Time.deltaTime);
+            _CachedTransform.position = Vector2.MoveTowards(_CachedTransform.position, targetPos, _Speed * Time.deltaTime);
 
-            if (CachedTransform.position == targetPos)
+            if (_CachedTransform.position == targetPos)
             {
                 break;
             }
@@ -100,7 +180,7 @@ public class Monster : Unit
         {
             //이동하고자 하는 위치를 꺼내온다.
             var moveDir = moveDirQueue.Dequeue();
-            var targetPos = new Position(Pos.x + moveDir.x, Pos.y + moveDir.y);
+            var targetPos = new Position(_Pos.x + moveDir.x, _Pos.y + moveDir.y);
             var targetTile = TileManager.Instance.GetTile(targetPos);
 
             //이동하고자 하는 타일이 땅이라면 바로 이동한다.
@@ -108,7 +188,7 @@ public class Monster : Unit
             {
                 CurTile.State = TileState.GROUND;
                 targetTile.State = TileState.MONSTER;
-                Pos = targetPos;
+                _Pos = targetPos;
                 StartCoroutine(Move_Internal(targetPos.vector));
                 return;
             }
@@ -146,7 +226,7 @@ public class Monster : Unit
                         {
                             CurTile.State = TileState.GROUND;
                             targetTile.State = TileState.MONSTER;
-                            Pos = targetPos;
+                            _Pos = targetPos;
                             StartCoroutine(Move_Internal(targetPos.vector));
                             return;
                         }
@@ -160,8 +240,8 @@ public class Monster : Unit
     bool IsPlayerInMyArea()
     {
         var playerPos = Player.Instance.Pos;
-        var areaMin = new Position(Pos.x - _HalfAreaX, Pos.y - _HalfAreaY);
-        var areaMax = new Position(Pos.x + _HalfAreaX, Pos.y + _HalfAreaY);
+        var areaMin = new Position(_Pos.x - _HalfAreaX, _Pos.y - _HalfAreaY);
+        var areaMax = new Position(_Pos.x + _HalfAreaX, _Pos.y + _HalfAreaY);
 
         if(areaMin.x <= playerPos.x && playerPos.x <= areaMax.x)
         {
@@ -176,9 +256,12 @@ public class Monster : Unit
 
     public void Init(Position pos)
     {
-        Pos = pos;
+        _HP = _MaxHP;
+        _IsDead = false;
+
+        _Pos = pos;
         CurTile.State = TileState.MONSTER;
-        CachedTransform.position = pos.vector;
+        _CachedTransform.position = pos.vector;
     }
 
 }

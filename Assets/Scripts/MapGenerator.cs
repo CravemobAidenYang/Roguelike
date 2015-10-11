@@ -45,6 +45,11 @@ public struct Position
     {
         return (a.x != b.x || a.y != b.y);
     }
+
+    public static Position operator +(Position a, Position b)
+    {
+        return new Position(a.x + b.x, a.y + b.y);
+    }
 }
 
 public delegate void VoidCallback();

@@ -2,12 +2,42 @@
 using System.Collections;
 
 
-public class Player : Unit
+public class Player : MonoBehaviour//Unit
 {
-    //public float _Speed;
+    public float _Speed;
 
+    public int _MaxHP;
+    protected int _HP;
+
+    public int _AttackPower;
+
+    bool _IsDead;
+    public bool IsDead
+    {
+        get
+        {
+            return _IsDead;
+        }
+    }
+
+    Position _Pos;
+    public Position Pos
+    {
+        get
+        {
+            return _Pos;
+        }
+        protected set
+        {
+            _Pos = value;
+        }
+    }
+
+    Transform _CachedTransform;
     Transform _CachedMainCamTransform;
-    //Position _Pos;
+    Animator _CachedAnimator;
+
+    bool _IsAttack;
 
     //이동 등의 작업이 진행 중이면 트루
     bool _IsProcessing = false;
@@ -22,13 +52,15 @@ public class Player : Unit
         }
     }
 
-    protected override void OnAwake()
+    void Awake()
     {
         if (_Instance == null)
         {
             _Instance = this;
 
+            _CachedTransform = this.transform;
             _CachedMainCamTransform = Camera.main.transform;
+            _CachedAnimator = GetComponent<Animator>();
 
             Init();
         }
@@ -43,9 +75,9 @@ public class Player : Unit
         _IsProcessing = true;
         while (true)
         {
-            CachedTransform.position = Vector2.MoveTowards(CachedTransform.position, targetPos, _Speed * Time.deltaTime);
+            _CachedTransform.position = Vector2.MoveTowards(_CachedTransform.position, targetPos, _Speed * Time.deltaTime);
 
-            if (CachedTransform.position == targetPos)
+            if (_CachedTransform.position == targetPos)
             {
                 _IsProcessing = false;
                 break;
@@ -56,35 +88,74 @@ public class Player : Unit
 
     void Move(Position targetPos)
     {
-        TileManager.Instance.GetTile(Pos).State = TileState.GROUND;
+        TileManager.Instance.GetTile(_Pos).State = TileState.GROUND;
         TileManager.Instance.GetTile(targetPos).State = TileState.PLAYER;
         StartCoroutine(Move_Internal(targetPos.vector));
-        Pos = targetPos;
+        _Pos = targetPos;
+    }
+
+    void Attack(Monster monster)
+    {
+        _IsAttack = true;
+        _CachedAnimator.Play("PlayerAttack");
+
+        monster.Hit(_AttackPower);
+    }
+
+    void AttackDone()
+    {
+        _IsAttack = false;
+    }
+
+    public void Hit(int damage)
+    {
+        print("Player.Hit");
+
+        if (!_IsDead)
+        {
+            if (!_IsAttack)
+            {
+                _CachedAnimator.Play("PlayerHit");
+            }
+
+            _HP -= damage;
+
+            if (_HP <= 0)
+            {
+                _IsDead = true;
+            }
+        }
     }
 
     bool CheckInput()
     {
-        Position targetPos = Pos;
-        if (Input.GetKey(KeyCode.UpArrow))
+        Position targetPos = _Pos;
+        if (Input.GetKeyDown(KeyCode.UpArrow))
         {
             targetPos.y++;
         }
-        else if (Input.GetKey(KeyCode.DownArrow))
+        else if (Input.GetKeyDown(KeyCode.DownArrow))
         {
             targetPos.y--;
         }
-        else if (Input.GetKey(KeyCode.LeftArrow))
+        else if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
             targetPos.x--;
         }
-        else if (Input.GetKey(KeyCode.RightArrow))
+        else if (Input.GetKeyDown(KeyCode.RightArrow))
         {
             targetPos.x++;
         }
 
-        if (TileManager.Instance.IsGroundTile(targetPos))
+        var targetTile = TileManager.Instance.GetTile(targetPos);
+        if (targetTile.IsGround)
         {
             Move(targetPos);
+            return true;
+        }
+        else if(targetTile.IsMonster)
+        {
+            Attack(MonsterManager.Instance.GetMonsterByPos(targetPos));
             return true;
         }
 
@@ -103,7 +174,7 @@ public class Player : Unit
     void LateUpdate()
     {
         var orgCamPos = _CachedMainCamTransform.position;
-        var newCamPos = Vector3.MoveTowards(orgCamPos, CachedTransform.position, 50 * Time.deltaTime);
+        var newCamPos = Vector3.MoveTowards(orgCamPos, _CachedTransform.position, 50 * Time.deltaTime);
         newCamPos.z = orgCamPos.z;
 
         _CachedMainCamTransform.position = newCamPos;
@@ -111,14 +182,21 @@ public class Player : Unit
 
     public void Init()
     {
+        _HP = _MaxHP;
+
+        _IsDead = false;
+        _IsAttack = false;
+
         //var tile = TileManager.Instance.GetRandomWalkableTile();
         var pos = CastleMapGenerator.Instance.PlayerRoom.GetRandomPosInRoom();
         var tile = TileManager.Instance.GetTile(pos);
 
-        Pos = pos;
-        CachedTransform.position = Pos.vector;
+        _Pos = pos;
+        _CachedTransform.position = _Pos.vector;
         tile.State = TileState.PLAYER;
         _IsProcessing = false;
-        _CachedMainCamTransform.position = new Vector3(CachedTransform.position.x, CachedTransform.position.y, _CachedMainCamTransform.position.z);
+        _CachedMainCamTransform.position = new Vector3(_CachedTransform.position.x, _CachedTransform.position.y, _CachedMainCamTransform.position.z);
     }
+
+
 }
