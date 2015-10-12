@@ -1,9 +1,27 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.IO;
+
+[System.Serializable]
+public class TileMapSaveData
+{
+    public Size size;
+    public TileSaveData[,] tileSaveDatas;
+
+    public TileMapSaveData(Size size, TileSaveData[,] tileSaveDatas)
+    {
+        this.size = size;
+        this.tileSaveDatas = tileSaveDatas;
+    }
+}
 
 public class TileManager : MonoBehaviour
 {
+    public Tile _TilePrefab;
+
     //생성된 타일들을 묶어두기 위한 용도
     public Transform _TileGroup;
 
@@ -46,6 +64,17 @@ public class TileManager : MonoBehaviour
     {
         DestroyTileMap();
         _Tiles = new Tile[size.width, size.height];
+
+        for (int x = 0; x < size.width; ++x)
+        {
+            for (int y = 0; y < size.height; ++y)
+            {
+                var tile = Instantiate(_TilePrefab) as Tile;
+
+                tile.Init(x, y, TileState.WALL);
+                _Tiles[x, y] = tile;
+            }
+        }
         _Size = size;
     }
 
@@ -125,7 +154,7 @@ public class TileManager : MonoBehaviour
                     if(!checkedFlags[x, y] && (x == pos.x || y == pos.y))
                     {
                         var newPos = new Position(x, y);
-                        if(IsValidPos(newPos) && _Tiles[x, y].State == _Tiles[startPos.x, startPos.y].State)
+                        if(IsValidPos(newPos) && _Tiles[x, y].GetState() == _Tiles[startPos.x, startPos.y].GetState())
                         {
                             checkedFlags[newPos.x, newPos.y] = true;
                             queue.Enqueue(newPos);
@@ -168,9 +197,40 @@ public class TileManager : MonoBehaviour
 
             var tile = _Tiles[x, y];
 
-            if(tile.State == TileState.GROUND)
+            if(tile.IsGround)
             {
                 return tile;
+            }
+        }
+    }
+
+    public void SaveTileMap()
+    {
+        TileSaveData[,] tileDatas = new TileSaveData[_Size.width, _Size.height];
+        for (int x = 0; x < _Size.width; ++x)
+        {
+            for (int y = 0; y < _Size.height; ++y)
+            {
+                tileDatas[x, y] = _Tiles[x, y].CreateSaveData();
+            }
+        }
+
+        SaveLoad.SaveData("TileMapSaveData", new TileMapSaveData(_Size, tileDatas));
+    }
+
+    public void LoadTileMap()
+    {
+        DestroyTileMap();
+
+        var tileMapSaveData = SaveLoad.LoadData<TileMapSaveData>("TileMapSaveData", null);
+
+        CreateTileMap(tileMapSaveData.size);
+
+        for (int x = 0; x < _Size.width; ++x)
+        {
+            for (int y = 0; y < _Size.height; ++y)
+            {
+                _Tiles[x, y].ApplySaveData(tileMapSaveData.tileSaveDatas[x, y]);
             }
         }
     }

@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+[System.Serializable]
 public struct Size
 {
     public int width, height;
@@ -12,6 +13,7 @@ public struct Size
     }
 }
 
+[System.Serializable]
 public struct Position
 {
     public int x, y;
@@ -50,6 +52,16 @@ public struct Position
     {
         return new Position(a.x + b.x, a.y + b.y);
     }
+
+    public static Position operator -(Position a, Position b)
+    {
+        return new Position(a.x - b.x, a.y - b.y);
+    }
+
+    public static Position left = new Position(-1, 0);
+    public static Position right = new Position(1, 0);
+    public static Position up = new Position(0, 1);
+    public static Position down = new Position(0, -1);
 }
 
 public delegate void VoidCallback();

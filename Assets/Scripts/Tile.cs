@@ -3,6 +3,19 @@ using System.Collections;
 
 public enum TileState { GROUND, WALL, PLAYER, MONSTER};
 
+[System.Serializable]
+public class TileSaveData
+{
+    public TileState state;
+    public int sprIndex;
+
+    public TileSaveData(TileState state, int sprIndex)
+    {
+        this.state = state;
+        this.sprIndex = sprIndex;
+    }
+}
+
 public class Tile : MonoBehaviour 
 {
     Position _Pos;
@@ -20,6 +33,7 @@ public class Tile : MonoBehaviour
     Transform _CachedTransform;
 
     TileState _State;
+    int _SprIndex;
 
     public bool IsUnit
     {
@@ -61,29 +75,28 @@ public class Tile : MonoBehaviour
         }
     }
 
-    public TileState State
+    public void SetState(TileState state, bool invalidate = true)
     {
-        get
+        _State = state;
+
+        if (invalidate)
         {
-            return _State;
-        }
-        set
-        {
-            if(_State != value)
+            if (IsWall)
             {
-                if (!IsUnit && value == TileState.GROUND)
-                {
-                    _SprRenderer.sprite = TileSpriteManager.Instance.GetRandomGroundSprite();
-                    _BoxCollider.enabled = false;
-                }
-                else if (value == TileState.WALL)
-                {
-                    _SprRenderer.sprite = TileSpriteManager.Instance.GetRandomWallSprite();
-                    _BoxCollider.enabled = true;
-                }
-                _State = value;
+                _SprRenderer.sprite = TileSpriteManager.Instance.GetRandomWallSprite(out _SprIndex);
+                _BoxCollider.enabled = true;
+            }
+            else
+            {
+                _SprRenderer.sprite = TileSpriteManager.Instance.GetRandomGroundSprite(out _SprIndex);
+                _BoxCollider.enabled = false;
             }
         }
+    }
+
+    public TileState GetState()
+    {
+        return _State;
     }
 
 	// Use this for initialization
@@ -99,8 +112,29 @@ public class Tile : MonoBehaviour
         _CachedTransform.position = new Vector2(x, y);
         _Pos = new Position(x, y);
 
-        this.State = state;
+        this.SetState(state);
 
         _CachedTransform.SetParent(TileManager.Instance._TileGroup);
+        //Invalidate();
+    }
+
+    public TileSaveData CreateSaveData()
+    {
+        return new TileSaveData(_State, _SprIndex);
+    }
+
+    public void ApplySaveData(TileSaveData data)
+    {
+        _State = data.state;
+        _SprIndex = data.sprIndex;
+
+        if(IsWall)
+        {
+            _SprRenderer.sprite = TileSpriteManager.Instance.GetWallSpriteFromIndex(_SprIndex);
+        }
+        else
+        {
+            _SprRenderer.sprite = TileSpriteManager.Instance.GetGroundSpriteFromIndex(_SprIndex);
+        }
     }
 }

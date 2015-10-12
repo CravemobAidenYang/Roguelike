@@ -1,6 +1,30 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+[System.Serializable]
+public class PlayerSaveData
+{
+    public Position pos;
+
+    public int maxHP, hp;
+    public int attackPower;
+    public float speed;
+
+    public float scaleX;
+
+    public bool isDead;
+
+    public PlayerSaveData(Position pos, int maxHP, int hp, int attackPower, float speed, float scaleX, bool isDead)
+    {
+        this.pos = pos;
+        this.maxHP = maxHP;
+        this.hp = hp;
+        this.attackPower = attackPower;
+        this.speed = speed;
+        this.scaleX = scaleX;
+        this.isDead = isDead;
+    }
+}
 
 public class Player : MonoBehaviour//Unit
 {
@@ -41,6 +65,13 @@ public class Player : MonoBehaviour//Unit
 
     //이동 등의 작업이 진행 중이면 트루
     bool _IsProcessing = false;
+    public bool IsProcessing
+    {
+        get
+        {
+            return _IsProcessing;
+        }
+    }
 
     static Player _Instance = null;
 
@@ -80,6 +111,7 @@ public class Player : MonoBehaviour//Unit
             if (_CachedTransform.position == targetPos)
             {
                 _IsProcessing = false;
+                MonsterManager.Instance.ProcessAllMonster();
                 break;
             }
             yield return null;
@@ -88,15 +120,22 @@ public class Player : MonoBehaviour//Unit
 
     void Move(Position targetPos)
     {
-        TileManager.Instance.GetTile(_Pos).State = TileState.GROUND;
-        TileManager.Instance.GetTile(targetPos).State = TileState.PLAYER;
+        TileManager.Instance.GetTile(_Pos).SetState(TileState.GROUND, false);
+        //TileManager.Instance.GetTile(_Pos).State = TileState.GROUND;
+        TileManager.Instance.GetTile(targetPos).SetState(TileState.PLAYER, false);
+        //TileManager.Instance.GetTile(targetPos).State = TileState.PLAYER;
         StartCoroutine(Move_Internal(targetPos.vector));
         _Pos = targetPos;
     }
 
     void Attack(Monster monster)
     {
+        print("attack");
+        _IsProcessing = true;
         _IsAttack = true;
+
+        //TODO : 여기 보던중
+        //_CachedAnimator.StopPlayback();
         _CachedAnimator.Play("PlayerAttack");
 
         monster.Hit(_AttackPower);
@@ -104,12 +143,17 @@ public class Player : MonoBehaviour//Unit
 
     void AttackDone()
     {
+        print("attack done");
+        MonsterManager.Instance.ProcessAllMonster();
+        _IsProcessing = false;
         _IsAttack = false;
     }
 
-    public void Hit(int damage)
+    public void Hit(Monster attacker, int damage)
     {
         print("Player.Hit");
+
+        //LookDir(attacker.Pos - _Pos);
 
         if (!_IsDead)
         {
@@ -123,51 +167,75 @@ public class Player : MonoBehaviour//Unit
             if (_HP <= 0)
             {
                 _IsDead = true;
+                GameManager.Instance.GameOver();
             }
         }
     }
 
-    bool CheckInput()
+    void LookDir(Position dir)
     {
-        Position targetPos = _Pos;
-        if (Input.GetKeyDown(KeyCode.UpArrow))
+        if (dir.x < 0)
         {
-            targetPos.y++;
+            _CachedTransform.localScale = new Vector3(-1, 1, 1);
         }
-        else if (Input.GetKeyDown(KeyCode.DownArrow))
+        else if (dir.x > 0)
         {
-            targetPos.y--;
+            _CachedTransform.localScale = new Vector3(1, 1, 1);
         }
-        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+    }
+
+    void CheckInput()
+    {
+        Position moveDir = new Position(0, 0);
+        if (Input.GetKey(KeyCode.UpArrow))
         {
-            targetPos.x--;
+            moveDir = Position.up;
         }
-        else if (Input.GetKeyDown(KeyCode.RightArrow))
+        else if (Input.GetKey(KeyCode.DownArrow))
         {
-            targetPos.x++;
+            moveDir = Position.down;
+        }
+        else if (Input.GetKey(KeyCode.LeftArrow))
+        {
+            moveDir = Position.left;
+        }
+        else if (Input.GetKey(KeyCode.RightArrow))
+        {
+            moveDir = Position.right;
         }
 
+        LookDir(moveDir);
+
+        var targetPos = _Pos + moveDir;
         var targetTile = TileManager.Instance.GetTile(targetPos);
         if (targetTile.IsGround)
         {
             Move(targetPos);
-            return true;
         }
         else if(targetTile.IsMonster)
         {
             Attack(MonsterManager.Instance.GetMonsterByPos(targetPos));
-            return true;
         }
-
-        return false;
     }
+
     void Update()
     {
-        if (!_IsProcessing && CheckInput())
+        if(GameManager.Instance.IsPause)
         {
+            return;
+        }
+
+        if(_IsDead)
+        {
+            return;
+        }
+
+        if (!_IsProcessing)
+        {
+            CheckInput();
             //다른 유닛 프로세싱...
             //Monster.ProcessAllMonster();
-            MonsterManager.Instance.ProcessAllMonster();
+            //MonsterManager.Instance.ProcessAllMonster();
         }
     }
 
@@ -188,15 +256,50 @@ public class Player : MonoBehaviour//Unit
         _IsAttack = false;
 
         //var tile = TileManager.Instance.GetRandomWalkableTile();
-        var pos = CastleMapGenerator.Instance.PlayerRoom.GetRandomPosInRoom();
-        var tile = TileManager.Instance.GetTile(pos);
+        Position pos;
+        Tile tile;
+        do
+        {
+            pos = CastleMapGenerator.Instance.PlayerRoom.GetRandomPosInRoom();
+            tile = TileManager.Instance.GetTile(pos);
+        } while (!tile.IsGround);
 
         _Pos = pos;
         _CachedTransform.position = _Pos.vector;
-        tile.State = TileState.PLAYER;
+        tile.SetState(TileState.PLAYER, false);
+        //tile.State = TileState.PLAYER;
         _IsProcessing = false;
         _CachedMainCamTransform.position = new Vector3(_CachedTransform.position.x, _CachedTransform.position.y, _CachedMainCamTransform.position.z);
     }
 
+    public void SavePlayerData()
+    {
+        var data = new PlayerSaveData(_Pos, _MaxHP, _HP, _AttackPower, _Speed, _CachedTransform.localScale.x, _IsDead);
 
+        SaveLoad.SaveData("PlayerSaveData", data);
+    }
+
+    public void LoadPlayerData()
+    {
+        var data = SaveLoad.LoadData<PlayerSaveData>("PlayerSaveData", null);
+        ApplySaveData(data);
+    }
+
+    void ApplySaveData(PlayerSaveData data)
+    {
+        _Pos = data.pos;
+        _MaxHP = data.maxHP;
+        _HP = data.hp;
+        _Speed = data.speed;
+        _AttackPower = data.attackPower;
+
+        _CachedTransform.position = _Pos.vector;
+        _CachedTransform.localScale = new Vector3(data.scaleX, 1, 1);
+
+        _CachedMainCamTransform.position = new Vector3(_CachedTransform.position.x, _CachedTransform.position.y, _CachedMainCamTransform.position.z);
+
+        _IsDead = data.isDead;
+
+        TileManager.Instance.GetTile(_Pos).SetState(TileState.PLAYER, false);
+    }
 }

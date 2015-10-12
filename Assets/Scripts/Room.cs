@@ -70,6 +70,8 @@ public class Room : MonoBehaviour
     {
         _Pos = pos;
         CachedTransform.position = _Pos.vector;
+
+
         //Min = new Position(_Pos.x - Width / 2, _Pos.y - Height / 2);
         //Max = new Position(_Pos.x + Width / 2, _Pos.y + Height / 2);
     }
@@ -84,6 +86,20 @@ public class Room : MonoBehaviour
     {
         var pos = new Position(Random.Range(Min.x, Max.x + 1), Random.Range(Min.y, Max.y + 1));
         return pos;
+    }
+
+    public Position? GetGroundPosInRoom()
+    {
+        for (int i = 0; i < 100; ++i)
+        {
+
+            var pos = new Position(Random.Range(Min.x, Max.x + 1), Random.Range(Min.y, Max.y + 1));
+            if (TileManager.Instance.IsGroundTile(pos))
+            {
+                return pos;
+            }
+        }
+        return null;
     }
 
     void Update()

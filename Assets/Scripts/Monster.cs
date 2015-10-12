@@ -2,13 +2,49 @@
 using System.Collections;
 using System.Collections.Generic;
 
+[System.Serializable]
+public class MonsterSaveData
+{
+    public int monsterIndex;
+
+    public Position pos;
+    public int maxHP, hp;
+    public int attackPower;
+    public int halfAreaX, halfAreaY;
+    public float scaleX;
+    public float speed;
+
+    public MonsterSaveData(int monsterIndex, Position pos, int maxHP, int hp, int attackPower, int halfAreaX, int halfAreaY, float scaleX, float speed)
+    {
+        this.monsterIndex = monsterIndex;
+        this.pos = pos;
+        this.maxHP = maxHP;
+        this.hp = hp;
+        this.attackPower = attackPower;
+        this.halfAreaX = halfAreaX;
+        this.halfAreaY = halfAreaY;
+        this.scaleX = scaleX;
+        this.speed = speed;
+    }
+}
+
 public class Monster : MonoBehaviour//Unit
 {
     Transform _CachedTransform;
     Animator _CachedAnimator;
 
+    int _MonsterIndex;
+
     public int _MaxHP;
     protected int _HP;
+
+    public int HP
+    {
+        get
+        {
+            return _HP;
+        }
+    }
 
     public float _Speed;
 
@@ -62,6 +98,15 @@ public class Monster : MonoBehaviour//Unit
 
     public void Action()
     {
+        if(GameManager.Instance.IsPause)
+        {
+            return;
+        }
+        if(_IsAlreadyActioned)
+        {
+            return;
+        }
+
         _IsAlreadyActioned = true;
 
 
@@ -70,13 +115,10 @@ public class Monster : MonoBehaviour//Unit
             var playerPos = Player.Instance.Pos;
             var moveDirQueue = new Queue<Position>();
 
-            var right = new Position(1, 0);
-            var left = new Position(-1, 0);
-            var up = new Position(0, 1);
-            var down = new Position(0, -1);
+            LookDir(playerPos - _Pos);
 
-            if(playerPos == _Pos + left || playerPos == _Pos + right ||
-                playerPos == _Pos + up || playerPos == _Pos + down)
+            if(playerPos == _Pos + Position.left || playerPos == _Pos + Position.right ||
+                playerPos == _Pos + Position.up || playerPos == _Pos + Position.down)
             {
                 Attack();
                 return;
@@ -88,40 +130,40 @@ public class Monster : MonoBehaviour//Unit
             {
                 if (playerPos.x > _Pos.x)
                 {
-                    moveDirQueue.Enqueue(right);
+                    moveDirQueue.Enqueue(Position.right);
                 }
                 else if(playerPos.x < _Pos.x)
                 {
-                    moveDirQueue.Enqueue(left);
+                    moveDirQueue.Enqueue(Position.left);
                 }
 
                 if (playerPos.y > _Pos.y)
                 {
-                    moveDirQueue.Enqueue(up);
+                    moveDirQueue.Enqueue(Position.up);
                 }
                 else if (playerPos.y < _Pos.y)
                 {
-                    moveDirQueue.Enqueue(down);
+                    moveDirQueue.Enqueue(Position.down);
                 }
             }
             else
             {
                 if (playerPos.y > _Pos.y)
                 {
-                    moveDirQueue.Enqueue(up);
+                    moveDirQueue.Enqueue(Position.up);
                 }
                 else if (playerPos.y < _Pos.y)
                 {
-                    moveDirQueue.Enqueue(down);
+                    moveDirQueue.Enqueue(Position.down);
                 }
 
                 if (playerPos.x > _Pos.x)
                 {
-                    moveDirQueue.Enqueue(right);
+                    moveDirQueue.Enqueue(Position.right);
                 }
                 else if (playerPos.x < _Pos.x)
                 {
-                    moveDirQueue.Enqueue(left);
+                    moveDirQueue.Enqueue(Position.left);
                 }
             }
 
@@ -131,16 +173,21 @@ public class Monster : MonoBehaviour//Unit
 
     void Attack()
     {
+        print("Monster.Attack");
+
         if(!Player.Instance.IsDead)
         {
             _CachedAnimator.Play("MonsterAttack");
-            Player.Instance.Hit(_AttackPower);
+            Player.Instance.Hit(this, _AttackPower);
         }
     }
 
     public void Hit(int damage)
     {
         print("Monster.Hit");
+
+        LookDir(Player.Instance.Pos - _Pos);
+
         if (!_IsDead)
         {
             _HP -= damage;
@@ -154,14 +201,16 @@ public class Monster : MonoBehaviour//Unit
 
     void Die()
     {
-        CurTile.State = TileState.GROUND;
+        CurTile.SetState(TileState.GROUND, false);
+        //CurTile.State = TileState.GROUND;
         MonsterManager.Instance.RemoveMonsterFromList(this);
-        this.gameObject.SetActive(false);
+        Destroy(gameObject);
+        //this.gameObject.SetActive(false);
     }
 
     IEnumerator Move_Internal(Vector3 targetPos)
     {
-        print("monster move internal");
+        //print("monster move internal");
         while (true)
         {
             _CachedTransform.position = Vector2.MoveTowards(_CachedTransform.position, targetPos, _Speed * Time.deltaTime);
@@ -171,6 +220,18 @@ public class Monster : MonoBehaviour//Unit
                 break;
             }
             yield return null;
+        }
+    }
+
+    void LookDir(Position dir)
+    {
+        if (dir.x < 0)
+        {
+            _CachedTransform.localScale = new Vector3(1, 1, 1);
+        }
+        else if (dir.x > 0)
+        {
+            _CachedTransform.localScale = new Vector3(-1, 1, 1);
         }
     }
 
@@ -186,8 +247,10 @@ public class Monster : MonoBehaviour//Unit
             //이동하고자 하는 타일이 땅이라면 바로 이동한다.
             if (TileManager.Instance.IsGroundTile(targetPos))
             {
-                CurTile.State = TileState.GROUND;
-                targetTile.State = TileState.MONSTER;
+                CurTile.SetState(TileState.GROUND, false);
+                //CurTile.State = TileState.GROUND;
+                targetTile.SetState(TileState.MONSTER, false);
+                //targetTile.State = TileState.MONSTER;
                 _Pos = targetPos;
                 StartCoroutine(Move_Internal(targetPos.vector));
                 return;
@@ -224,8 +287,10 @@ public class Monster : MonoBehaviour//Unit
                         //그 자리에 몬스터가 사라졌으면 그 자리로 이동한다.
                         else
                         {
-                            CurTile.State = TileState.GROUND;
-                            targetTile.State = TileState.MONSTER;
+                            CurTile.SetState(TileState.GROUND, false);
+                            //CurTile.State = TileState.GROUND;
+                            targetTile.SetState(TileState.MONSTER, false);
+                            //targetTile.State = TileState.MONSTER;
                             _Pos = targetPos;
                             StartCoroutine(Move_Internal(targetPos.vector));
                             return;
@@ -234,8 +299,7 @@ public class Monster : MonoBehaviour//Unit
                 }
             }
         }
-    }
-
+    }                       
 
     bool IsPlayerInMyArea()
     {
@@ -254,14 +318,38 @@ public class Monster : MonoBehaviour//Unit
         return false;
     }
 
-    public void Init(Position pos)
+    public void Init(int index, Position pos)
     {
+        _MonsterIndex = index;
         _HP = _MaxHP;
         _IsDead = false;
 
         _Pos = pos;
-        CurTile.State = TileState.MONSTER;
+        CurTile.SetState(TileState.MONSTER, false);
+        //CurTile.State = TileState.MONSTER;
         _CachedTransform.position = pos.vector;
     }
 
+    public MonsterSaveData CreateSaveData()
+    {
+        return new MonsterSaveData(_MonsterIndex, _Pos, _MaxHP, _HP, _AttackPower, _HalfAreaX, _HalfAreaY, _CachedTransform.localScale.x, _Speed);
+    }
+
+    public void ApplySaveData(MonsterSaveData data)
+    {
+        _MonsterIndex = data.monsterIndex;
+        _Pos = data.pos;
+        _MaxHP = data.maxHP;
+        _HP = data.hp;
+        _AttackPower = data.attackPower;
+        _HalfAreaX = data.halfAreaX;
+        _HalfAreaY = data.halfAreaY;
+        _CachedTransform.localScale = new Vector3(data.scaleX, 1, 1);
+        _Speed = data.speed;
+        _IsDead = false;
+
+        _CachedTransform.position = _Pos.vector;
+
+        CurTile.SetState(TileState.MONSTER, false);
+    }
 }

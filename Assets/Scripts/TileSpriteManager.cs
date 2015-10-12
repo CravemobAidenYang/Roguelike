@@ -30,13 +30,26 @@ public class TileSpriteManager : MonoBehaviour
         }
     }
 
-    public Sprite GetRandomGroundSprite()
+    public Sprite GetRandomGroundSprite(out int index)
     {
-        return _GroundSprites[Random.Range(0, _GroundSprites.Length)];
+        index = Random.Range(0, _GroundSprites.Length);
+        return _GroundSprites[index];
     }
 
-    public Sprite GetRandomWallSprite()
+    public Sprite GetRandomWallSprite(out int index)
     {
-        return _WallSprites[Random.Range(0, _WallSprites.Length)];
+        index = Random.Range(0, _WallSprites.Length);
+        return _WallSprites[index];
     }
+
+    public Sprite GetGroundSpriteFromIndex(int index)
+    {
+        return _GroundSprites[index];
+    }
+
+    public Sprite GetWallSpriteFromIndex(int index)
+    {
+        return _WallSprites[index];
+    }
+
 }
