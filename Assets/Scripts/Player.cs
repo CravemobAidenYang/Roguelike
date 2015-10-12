@@ -131,12 +131,13 @@ public class Player : MonoBehaviour//Unit
     void Attack(Monster monster)
     {
         print("attack");
+
         _IsProcessing = true;
         _IsAttack = true;
 
         //TODO : 여기 보던중
-        //_CachedAnimator.StopPlayback();
-        _CachedAnimator.Play("PlayerAttack");
+        //_CachedAnimator.Has
+        _CachedAnimator.Play("PlayerAttack", -1, 0f);
 
         monster.Hit(_AttackPower);
     }

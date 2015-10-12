@@ -8,7 +8,7 @@ public class GameManager : MonoBehaviour
     public TileManager _TileManagerPrefab;
     public Player _PlayerPrefab;
 
-    public Image _PauseMenu;
+    public UIPanel _PauseMenu;
     public Image _GameOverMenu;
 
     bool _IsStarted;
