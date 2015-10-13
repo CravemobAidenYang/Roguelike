@@ -15,6 +15,8 @@ public class TileSpriteManager : MonoBehaviour
 
     public Sprite[] _GroundSprites;
     public Sprite[] _WallSprites;
+    public Sprite[] _FoodSprites;
+    public Sprite _ExitSprite;
 
 	// Use this for initialization
     void Awake()

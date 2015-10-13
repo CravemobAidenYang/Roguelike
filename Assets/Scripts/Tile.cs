@@ -51,6 +51,21 @@ public class Tile : MonoBehaviour
         }
     }
 
+    public bool IsFood
+    {
+        get
+        {
+            if(FoodManager.Instance.GetFoodFromPos(_Pos) != null)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+    }
+
     public bool IsWall
     {
         get

@@ -9,7 +9,8 @@ public class GameManager : MonoBehaviour
     public Player _PlayerPrefab;
 
     public UIPanel _PauseMenu;
-    public Image _GameOverMenu;
+    public UIPanel _GameOverMenu;
+    public UIPanel _BeginPanel;
 
     bool _IsStarted;
 
@@ -67,7 +68,6 @@ public class GameManager : MonoBehaviour
         mapGenerator.Generate(() =>
         {
             var player = Instantiate(_PlayerPrefab);
-            _IsStarted = true;
         });
     }
 
@@ -77,6 +77,15 @@ public class GameManager : MonoBehaviour
         {
             StartCoroutine(TogglePauseMenuCoroutine());
         }
+#if DEBUG
+        if(Input.GetKeyDown(KeyCode.Space))
+        {
+            if(_BeginPanel.gameObject.activeInHierarchy)
+            {
+                HideBeginPanel();
+            }
+        }
+#endif
     }
 
     IEnumerator TogglePauseMenuCoroutine()
@@ -115,6 +124,7 @@ public class GameManager : MonoBehaviour
         TileManager.Instance.SaveTileMap();
         Player.Instance.SavePlayerData();
         MonsterManager.Instance.SaveMonsterData();
+        FoodManager.Instance.SaveFoodData();
 
         _IsPause = false;
         _PauseMenu.gameObject.SetActive(false);
@@ -127,7 +137,8 @@ public class GameManager : MonoBehaviour
         TileManager.Instance.LoadTileMap();
         Player.Instance.LoadPlayerData();
         MonsterManager.Instance.LoadMonsterData();
-     
+        FoodManager.Instance.LoadFoodData();
+
         _IsPause = false;
         _PauseMenu.gameObject.SetActive(false);
         Time.timeScale = 1f;
@@ -149,5 +160,21 @@ public class GameManager : MonoBehaviour
     {
         _GameOverMenu.gameObject.SetActive(false);
         CastleMapGenerator.Instance.Reset();
+    }
+
+    public void ShowBeginPanel()
+    {
+        _BeginPanel.gameObject.SetActive(true);
+    }
+
+    public void HideBeginPanel()
+    {
+        _BeginPanel.gameObject.SetActive(false);
+        _IsStarted = true;
+    }
+
+    public void StartGame()
+    {
+        _IsStarted = true;
     }
 }

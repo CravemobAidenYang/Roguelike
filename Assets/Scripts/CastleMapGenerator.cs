@@ -21,6 +21,7 @@ public class CastleMapGenerator : MapGenerator
 
     public int radius;
 
+    public int _MinRoomNum;
     public int _MaxRoomNum;
 
     public int _MinRoomWidth;
@@ -37,6 +38,8 @@ public class CastleMapGenerator : MapGenerator
 
     public int _MinBossRoomMonsterNum;
     public int _MaxBossRoomMonsterNum;
+
+    public int _MinRoomFoodNum, _MaxRoomFoodNum;
 
     List<Room> _RoomList, _MainRoomList;
 
@@ -90,6 +93,9 @@ public class CastleMapGenerator : MapGenerator
         CreateMonsters(_MainRoomList);
 
         callback();
+
+        CreateFoods(_MainRoomList);
+
     }
 
     //랜덤한 범위내에서 방을 생성
@@ -97,7 +103,8 @@ public class CastleMapGenerator : MapGenerator
     {
         List<Room> roomList = new List<Room>();
 
-        for (int i = 0; i < _MaxRoomNum; ++i)
+        int roomNum = Random.Range(_MinRoomNum, _MaxRoomNum + 1);
+        for (int i = 0; i < roomNum; ++i)
         {
             var pos = Random.insideUnitSphere * radius;
             pos.z = 0f;
@@ -532,7 +539,7 @@ public class CastleMapGenerator : MapGenerator
         }
 
 
-        foreach(var room in _MainRoomList)
+        foreach (var room in roomList)
         {
             if(room == _BossRoom || room == _PlayerRoom)
             {
@@ -548,6 +555,28 @@ public class CastleMapGenerator : MapGenerator
                 {
                     var monster = MonsterManager.Instance.CreateMonster(0);
                     monster.Init(0, pos.Value);
+                }
+            }
+        }
+    }
+
+    void CreateFoods(List<Room> roomList)
+    {
+        foreach (var room in roomList)
+        {
+            int roomFoodNum = Random.Range(_MinRoomFoodNum, _MaxRoomFoodNum + 1);
+            for (int i = 0; i < roomFoodNum; ++i)
+            {
+                var pos = room.GetGroundPosInRoom();
+                if (pos != null)
+                {
+                    if (FoodManager.Instance.GetFoodFromPos(pos.Value) != null)
+                    {
+                        i--;
+                        continue;
+                    }
+                    var food = FoodManager.Instance.CreateFood();
+                    food.Init(pos.Value);
                 }
             }
         }
@@ -589,7 +618,7 @@ public class CastleMapGenerator : MapGenerator
             Debug.DrawLine(_PlayerRoom.CachedTransform.position, _BossRoom.CachedTransform.position, Color.yellow);
         }
 
-        if (Input.GetKeyDown(KeyCode.F5))
+        if (!GameManager.Instance.IsPause && Input.GetKeyDown(KeyCode.F5))
         {
             Reset();
         }
@@ -610,6 +639,7 @@ public class CastleMapGenerator : MapGenerator
     public void Reset()
     {
         MonsterManager.Instance.Cleanup();
+        FoodManager.Instance.Cleanup();
         Player.Instance.gameObject.SetActive(false);
         Generate(() =>
         {

@@ -38,6 +38,14 @@ public struct Position
         }
     }
 
+    public Vector3 vector3
+    {
+        get
+        {
+            return new Vector3(x, y, 0f);
+        }
+    }
+
     public static bool operator ==(Position a, Position b)
     {
         return (a.x == b.x && a.y == b.y);

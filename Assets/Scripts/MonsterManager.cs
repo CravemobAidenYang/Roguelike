@@ -77,6 +77,8 @@ public class MonsterManager : MonoBehaviour
 
     public void ProcessAllMonster()
     {
+        print("Process All Monster");
+
         if(GameManager.Instance.IsPause)
         {
             return;
@@ -100,6 +102,7 @@ public class MonsterManager : MonoBehaviour
     {
         foreach (var monster in _MonsterList)
         {
+            monster.Cleanup();
             Destroy(monster.gameObject);
         }
         _MonsterList.Clear();

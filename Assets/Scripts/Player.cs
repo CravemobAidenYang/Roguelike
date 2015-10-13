@@ -7,19 +7,25 @@ public class PlayerSaveData
     public Position pos;
 
     public int maxHP, hp;
-    public int attackPower;
+    public int minAttackPower, maxAttackPower;
+    public float criticalProbability;
+    public int minCriAttackPower, maxCriAttackPower;
     public float speed;
 
     public float scaleX;
 
     public bool isDead;
 
-    public PlayerSaveData(Position pos, int maxHP, int hp, int attackPower, float speed, float scaleX, bool isDead)
+    public PlayerSaveData(Position pos, int maxHP, int hp, int minAttackPower, int maxAttackPower, float critical, int minCri, int maxCri, float speed, float scaleX, bool isDead)
     {
         this.pos = pos;
         this.maxHP = maxHP;
         this.hp = hp;
-        this.attackPower = attackPower;
+        this.minAttackPower = minAttackPower;
+        this.maxAttackPower = maxAttackPower;
+        this.minCriAttackPower = minCri;
+        this.maxCriAttackPower = maxCri;
+        this.criticalProbability = critical;
         this.speed = speed;
         this.scaleX = scaleX;
         this.isDead = isDead;
@@ -28,12 +34,21 @@ public class PlayerSaveData
 
 public class Player : MonoBehaviour//Unit
 {
+    public DamageLabel _HealLabelPrefab;
+    public DamageLabel _DamageLabelPrefab;
+    public DamageLabel _CriticalDamageLabelPrefab;
+
+    public UISlider _HPBarPrefab;
+    UISlider _HPBar;
+
     public float _Speed;
 
     public int _MaxHP;
-    protected int _HP;
+    int _HP;
 
-    public int _AttackPower;
+    public int _MinAttackPower, _MaxAttackPower;
+    public float _CriticalProbability;
+    public int _MinCriAttackPower, _MaxCriAttackPower;
 
     bool _IsDead;
     public bool IsDead
@@ -93,12 +108,19 @@ public class Player : MonoBehaviour//Unit
             _CachedMainCamTransform = Camera.main.transform;
             _CachedAnimator = GetComponent<Animator>();
 
+            _HPBar = Instantiate(_HPBarPrefab);
+
             Init();
         }
         else
         {
             Destroy(this.gameObject);
         }
+    }
+
+    void Start()
+    {
+        //_HPBar.transform.SetParent(GameManager.Instance.HUD.transform);
     }
 
     IEnumerator Move_Internal(Vector3 targetPos)
@@ -111,6 +133,14 @@ public class Player : MonoBehaviour//Unit
             if (_CachedTransform.position == targetPos)
             {
                 _IsProcessing = false;
+                print("Move Done");
+
+                var food = FoodManager.Instance.GetFoodFromPos(_Pos);
+                if(food != null)
+                {
+                    Eat(food);
+                }
+
                 MonsterManager.Instance.ProcessAllMonster();
                 break;
             }
@@ -135,11 +165,16 @@ public class Player : MonoBehaviour//Unit
         _IsProcessing = true;
         _IsAttack = true;
 
-        //TODO : 여기 보던중
-        //_CachedAnimator.Has
         _CachedAnimator.Play("PlayerAttack", -1, 0f);
 
-        monster.Hit(_AttackPower);
+        if (Random.Range(0f, 1f) <= _CriticalProbability)
+        {
+            monster.Hit(Random.Range(_MinCriAttackPower, _MaxCriAttackPower + 1), true);
+        }
+        else
+        {
+            monster.Hit(Random.Range(_MinAttackPower, _MaxAttackPower + 1), false);
+        }
     }
 
     void AttackDone()
@@ -150,7 +185,7 @@ public class Player : MonoBehaviour//Unit
         _IsAttack = false;
     }
 
-    public void Hit(Monster attacker, int damage)
+    public void Hit(Monster attacker, int damage, bool isCritical)
     {
         print("Player.Hit");
 
@@ -164,6 +199,20 @@ public class Player : MonoBehaviour//Unit
             }
 
             _HP -= damage;
+            InvalidateHPBar();
+
+            DamageLabel damageLabel;
+            if(isCritical)
+            {
+                damageLabel = Instantiate(_CriticalDamageLabelPrefab);
+            }
+            else
+            {
+                damageLabel = Instantiate(_DamageLabelPrefab);
+            }
+            damageLabel.SetTargetWorldPos(_CachedTransform.position + new Vector3(0, 1, 0));
+            damageLabel.text = damage.ToString();
+
 
             if (_HP <= 0)
             {
@@ -219,6 +268,24 @@ public class Player : MonoBehaviour//Unit
         }
     }
 
+    void Eat(Food food)
+    {
+        print("food Heal Point : " + food.HealPoint);
+        _HP += food.HealPoint;
+
+        DamageLabel healLabel = Instantiate(_HealLabelPrefab);
+        healLabel.SetTargetWorldPos(_CachedTransform.position + new Vector3(0, 1, 0));
+        healLabel.text = "+" + food.HealPoint.ToString();
+
+        if(_HP > _MaxHP)
+        {
+            _HP = _MaxHP;
+        }
+
+        InvalidateHPBar();
+        FoodManager.Instance.RemoveFood(food);
+    }
+
     void Update()
     {
         if(GameManager.Instance.IsPause)
@@ -240,6 +307,14 @@ public class Player : MonoBehaviour//Unit
         }
     }
 
+    Vector3 GetUIScreenPos(Vector3 pos)
+    {
+        var viewPos = Camera.main.WorldToViewportPoint(pos);
+
+        var uiScreenPos = UICamera.currentCamera.ViewportToWorldPoint(viewPos);
+        return uiScreenPos;
+    }
+
     void LateUpdate()
     {
         var orgCamPos = _CachedMainCamTransform.position;
@@ -247,11 +322,17 @@ public class Player : MonoBehaviour//Unit
         newCamPos.z = orgCamPos.z;
 
         _CachedMainCamTransform.position = newCamPos;
+
+
+        var uiScreenPos = GetUIScreenPos(_CachedTransform.position + new Vector3(0f, 0.6f, 0f));
+        _HPBar.transform.position = uiScreenPos;
     }
 
     public void Init()
     {
         _HP = _MaxHP;
+
+        InvalidateHPBar();
 
         _IsDead = false;
         _IsAttack = false;
@@ -275,7 +356,9 @@ public class Player : MonoBehaviour//Unit
 
     public void SavePlayerData()
     {
-        var data = new PlayerSaveData(_Pos, _MaxHP, _HP, _AttackPower, _Speed, _CachedTransform.localScale.x, _IsDead);
+        var data = new PlayerSaveData(_Pos, _MaxHP, _HP,
+            _MinAttackPower, _MaxAttackPower, _CriticalProbability, _MinCriAttackPower, _MaxCriAttackPower,
+            _Speed, _CachedTransform.localScale.x, _IsDead);
 
         SaveLoad.SaveData("PlayerSaveData", data);
     }
@@ -292,7 +375,13 @@ public class Player : MonoBehaviour//Unit
         _MaxHP = data.maxHP;
         _HP = data.hp;
         _Speed = data.speed;
-        _AttackPower = data.attackPower;
+        _MinAttackPower = data.minAttackPower;
+        _MaxAttackPower = data.maxAttackPower;
+        _MinCriAttackPower = data.minCriAttackPower;
+        _MaxCriAttackPower = data.maxCriAttackPower;
+        _CriticalProbability = data.criticalProbability;
+
+        InvalidateHPBar();
 
         _CachedTransform.position = _Pos.vector;
         _CachedTransform.localScale = new Vector3(data.scaleX, 1, 1);
@@ -302,5 +391,10 @@ public class Player : MonoBehaviour//Unit
         _IsDead = data.isDead;
 
         TileManager.Instance.GetTile(_Pos).SetState(TileState.PLAYER, false);
+    }
+
+    void InvalidateHPBar()
+    {
+        _HPBar.value = (float)_HP / (float)_MaxHP;
     }
 }

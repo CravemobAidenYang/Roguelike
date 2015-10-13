@@ -9,18 +9,24 @@ public class MonsterSaveData
 
     public Position pos;
     public int maxHP, hp;
-    public int attackPower;
+    public int minAttackPower, maxAttackPower;
+    public float criticalProbability;
+    public int minCriAttackPower, maxCriAttackPower;
     public int halfAreaX, halfAreaY;
     public float scaleX;
     public float speed;
 
-    public MonsterSaveData(int monsterIndex, Position pos, int maxHP, int hp, int attackPower, int halfAreaX, int halfAreaY, float scaleX, float speed)
+    public MonsterSaveData(int monsterIndex, Position pos, int maxHP, int hp, int minAttackPower, int maxAttackPower, float critical, int minCri, int maxCri, int halfAreaX, int halfAreaY, float scaleX, float speed)
     {
         this.monsterIndex = monsterIndex;
         this.pos = pos;
         this.maxHP = maxHP;
         this.hp = hp;
-        this.attackPower = attackPower;
+        this.minAttackPower = minAttackPower;
+        this.maxAttackPower = maxAttackPower;
+        this.minCriAttackPower = minCri;
+        this.maxCriAttackPower = maxCri;
+        this.criticalProbability = critical;
         this.halfAreaX = halfAreaX;
         this.halfAreaY = halfAreaY;
         this.scaleX = scaleX;
@@ -30,6 +36,12 @@ public class MonsterSaveData
 
 public class Monster : MonoBehaviour//Unit
 {
+    public DamageLabel _CriticalDamageLabelPrefab;
+    public DamageLabel _DamageLabelPrefab;
+
+    public UISlider _HPBarPrefab;
+    UISlider _HPBar;
+
     Transform _CachedTransform;
     Animator _CachedAnimator;
 
@@ -81,7 +93,10 @@ public class Monster : MonoBehaviour//Unit
 
     public int _HalfAreaX, _HalfAreaY;
 
-    public int _AttackPower;
+    public int _MinAttackPower, _MaxAttackPower;
+
+    public float _CriticalProbability;
+    public int _MinCriAttackPower, _MaxCriAttackPower;
 
     bool _IsAlreadyActioned = false;
 
@@ -94,6 +109,25 @@ public class Monster : MonoBehaviour//Unit
     {
         _CachedTransform = this.transform;
         _CachedAnimator = GetComponent<Animator>();
+        _HPBar = Instantiate(_HPBarPrefab);
+    }
+
+    void InvalidateHPBar()
+    {
+        _HPBar.value = (float)_HP / (float)_MaxHP;
+    }
+
+    void LateUpdate()
+    {
+        var screenPos = Camera.main.WorldToScreenPoint(_CachedTransform.position + new Vector3(0f, 0.6f, 0f));
+
+        var uiScreenPos = UICamera.currentCamera.ScreenToWorldPoint(screenPos);
+        _HPBar.transform.position = uiScreenPos;
+    }
+
+    public void Cleanup()
+    {
+        Destroy(_HPBar.gameObject);
     }
 
     public void Action()
@@ -178,11 +212,18 @@ public class Monster : MonoBehaviour//Unit
         if(!Player.Instance.IsDead)
         {
             _CachedAnimator.Play("MonsterAttack");
-            Player.Instance.Hit(this, _AttackPower);
+            if(Random.Range(0f, 1f) <= _CriticalProbability)
+            {
+                Player.Instance.Hit(this, Random.Range(_MinCriAttackPower, _MaxCriAttackPower + 1), true);
+            }
+            else
+            {
+                Player.Instance.Hit(this, Random.Range(_MinAttackPower, _MaxAttackPower + 1), false);
+            }
         }
     }
 
-    public void Hit(int damage)
+    public void Hit(int damage, bool isCritical)
     {
         print("Monster.Hit");
 
@@ -191,6 +232,21 @@ public class Monster : MonoBehaviour//Unit
         if (!_IsDead)
         {
             _HP -= damage;
+
+            DamageLabel damageLabel;
+            if (isCritical)
+            {
+                damageLabel = Instantiate(_CriticalDamageLabelPrefab);
+            }
+            else
+            {
+                damageLabel = Instantiate(_DamageLabelPrefab);
+            }
+            damageLabel.SetTargetWorldPos(_CachedTransform.position + new Vector3(0, 1, 0));
+            damageLabel.text = damage.ToString();
+
+            InvalidateHPBar();
+            
             if (_HP <= 0)
             {
                 _IsDead = true;
@@ -204,6 +260,7 @@ public class Monster : MonoBehaviour//Unit
         CurTile.SetState(TileState.GROUND, false);
         //CurTile.State = TileState.GROUND;
         MonsterManager.Instance.RemoveMonsterFromList(this);
+        Cleanup();
         Destroy(gameObject);
         //this.gameObject.SetActive(false);
     }
@@ -252,7 +309,9 @@ public class Monster : MonoBehaviour//Unit
                 targetTile.SetState(TileState.MONSTER, false);
                 //targetTile.State = TileState.MONSTER;
                 _Pos = targetPos;
-                StartCoroutine(Move_Internal(targetPos.vector));
+                StopCoroutine("Move_Internal");
+                StartCoroutine("Move_Internal", targetPos.vector3);
+                //StartCoroutine(Move_Internal(targetPos.vector));
                 return;
             }
             //땅이 아니라면 타일의 상태를 파악한다.
@@ -292,7 +351,8 @@ public class Monster : MonoBehaviour//Unit
                             targetTile.SetState(TileState.MONSTER, false);
                             //targetTile.State = TileState.MONSTER;
                             _Pos = targetPos;
-                            StartCoroutine(Move_Internal(targetPos.vector));
+                            StopCoroutine("Move_Internal");
+                            StartCoroutine("Move_Internal", targetPos.vector3);
                             return;
                         }
                     }
@@ -322,6 +382,9 @@ public class Monster : MonoBehaviour//Unit
     {
         _MonsterIndex = index;
         _HP = _MaxHP;
+
+        InvalidateHPBar();
+
         _IsDead = false;
 
         _Pos = pos;
@@ -332,7 +395,9 @@ public class Monster : MonoBehaviour//Unit
 
     public MonsterSaveData CreateSaveData()
     {
-        return new MonsterSaveData(_MonsterIndex, _Pos, _MaxHP, _HP, _AttackPower, _HalfAreaX, _HalfAreaY, _CachedTransform.localScale.x, _Speed);
+        return new MonsterSaveData(_MonsterIndex, _Pos, _MaxHP, _HP,
+            _MinAttackPower, _MaxAttackPower, _CriticalProbability, _MinCriAttackPower, _MaxCriAttackPower,
+            _HalfAreaX, _HalfAreaY, _CachedTransform.localScale.x, _Speed);
     }
 
     public void ApplySaveData(MonsterSaveData data)
@@ -341,12 +406,19 @@ public class Monster : MonoBehaviour//Unit
         _Pos = data.pos;
         _MaxHP = data.maxHP;
         _HP = data.hp;
-        _AttackPower = data.attackPower;
+        _MinAttackPower = data.minAttackPower;
+        _MaxAttackPower = data.maxAttackPower;
+        _MinCriAttackPower = data.minCriAttackPower;
+        _MaxCriAttackPower = data.maxCriAttackPower;
+        _CriticalProbability = data.criticalProbability;
+
         _HalfAreaX = data.halfAreaX;
         _HalfAreaY = data.halfAreaY;
         _CachedTransform.localScale = new Vector3(data.scaleX, 1, 1);
         _Speed = data.speed;
         _IsDead = false;
+
+        InvalidateHPBar();
 
         _CachedTransform.position = _Pos.vector;
 

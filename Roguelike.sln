@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2015
+# Visual Studio 2013
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Roguelike.CSharp", "Roguelike.CSharp.csproj", "{3DFE4C14-E1E8-D3F3-25DE-8BBE8DEFCFD5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Roguelike.CSharp.Editor", "Roguelike.CSharp.Editor.csproj", "{CAED324B-6229-B97C-3095-98CF546CD4B6}"
