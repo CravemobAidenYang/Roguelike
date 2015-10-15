@@ -35,8 +35,48 @@ public class TileManager : MonoBehaviour
         }
     }
 
+    public float _VisitedTileColor;
+    public float VisitedTileColor
+    {
+        get
+        {
+            return _VisitedTileColor;
+        }
+    }
+
     Tile[,] _Tiles;
     Size _Size;
+
+    public void ResetTilesVisibleInfo()
+    {
+        foreach(var tile in _Tiles)
+        {
+            tile.IsVisble = false;
+        }
+    }
+
+    public void SetVisitedTilesColor()
+    {
+        foreach(var tile in _Tiles)
+        {
+            if(tile.IsVisted)
+            {
+                tile.SetColor(_VisitedTileColor);
+
+                if (tile.IsMonster)
+                {
+                    //몬스터는 안보여야함.
+                    var monster = MonsterManager.Instance.GetMonsterByPos(tile.Pos);
+                    monster.SetColor(0f);
+                }
+                if(tile.HasFood)
+                {
+                    var food = FoodManager.Instance.GetFoodByPos(tile.Pos);
+                    food.SetColor(_VisitedTileColor);
+                }
+            }
+        }
+    }
 
 	// Use this for initialization
 	void Awake ()
@@ -53,11 +93,6 @@ public class TileManager : MonoBehaviour
 	
     void Update()
     {
-        //List<List<Position>> regionList;
-        //if (Input.GetMouseButtonDown(0))
-        //{
-        //    regionList = GetGroundRegions();
-        //}
     }
 
 	public void CreateTileMap(Size size)

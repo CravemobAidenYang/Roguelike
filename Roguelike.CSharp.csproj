@@ -13,13 +13,11 @@
     <TargetFrameworkIdentifier>.NETFramework</TargetFrameworkIdentifier>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <TargetFrameworkProfile>Unity Subset v3.5</TargetFrameworkProfile>
-    <CompilerResponseFile>
-    </CompilerResponseFile>
+    <CompilerResponseFile></CompilerResponseFile>
     <UnityProjectType>Game:1</UnityProjectType>
     <UnityBuildTarget>StandaloneWindows:5</UnityBuildTarget>
     <UnityVersion>5.2.1f1</UnityVersion>
-    <RootNamespace>
-    </RootNamespace>
+    <RootNamespace></RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -56,17 +54,17 @@
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Xml.Linq" />
+    <Reference Include="UnityEngine.Advertisements">
+      <HintPath>Library\UnityAssemblies\UnityEngine.Advertisements.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>Library\UnityAssemblies\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.Networking">
       <HintPath>Library\UnityAssemblies\UnityEngine.Networking.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine.Networking">
-      <HintPath>Library\UnityAssemblies\UnityEngine.Networking.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.UI">
-      <HintPath>Library\UnityAssemblies\UnityEngine.UI.dll</HintPath>
+    <Reference Include="UnityEngine.Analytics">
+      <HintPath>Library\UnityAssemblies\UnityEngine.Analytics.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Cecil">
       <HintPath>Library\UnityAssemblies\Mono.Cecil.dll</HintPath>
@@ -223,9 +221,12 @@
     <Compile Include="Assets\Scripts\CaveMapGenerator.cs" />
     <Compile Include="Assets\Scripts\Cell.cs" />
     <Compile Include="Assets\Scripts\DamageLabel.cs" />
+    <Compile Include="Assets\Scripts\DestroyByTime.cs" />
     <Compile Include="Assets\Scripts\Food.cs" />
     <Compile Include="Assets\Scripts\FoodManager.cs" />
     <Compile Include="Assets\Scripts\GameManager.cs" />
+    <Compile Include="Assets\Scripts\GameOverMenu.cs" />
+    <Compile Include="Assets\Scripts\GoToNextPanel.cs" />
     <Compile Include="Assets\Scripts\Graph.cs" />
     <Compile Include="Assets\Scripts\MapGenerator.cs" />
     <Compile Include="Assets\Scripts\MapManager.cs" />

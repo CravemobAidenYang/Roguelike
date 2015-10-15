@@ -16,7 +16,9 @@ public class MonsterSaveData
     public float scaleX;
     public float speed;
 
-    public MonsterSaveData(int monsterIndex, Position pos, int maxHP, int hp, int minAttackPower, int maxAttackPower, float critical, int minCri, int maxCri, int halfAreaX, int halfAreaY, float scaleX, float speed)
+    public MonsterSaveData(int monsterIndex, Position pos, int maxHP, int hp,
+        int minAttackPower, int maxAttackPower, float critical, int minCri, int maxCri,
+        int halfAreaX, int halfAreaY, float scaleX, float speed)
     {
         this.monsterIndex = monsterIndex;
         this.pos = pos;
@@ -44,6 +46,7 @@ public class Monster : MonoBehaviour//Unit
 
     Transform _CachedTransform;
     Animator _CachedAnimator;
+    SpriteRenderer _SprRenderer;
 
     int _MonsterIndex;
 
@@ -109,7 +112,11 @@ public class Monster : MonoBehaviour//Unit
     {
         _CachedTransform = this.transform;
         _CachedAnimator = GetComponent<Animator>();
+        _SprRenderer = GetComponent<SpriteRenderer>();
+
         _HPBar = Instantiate(_HPBarPrefab);
+        SetColor(0f);
+
     }
 
     void InvalidateHPBar()
@@ -214,11 +221,11 @@ public class Monster : MonoBehaviour//Unit
             _CachedAnimator.Play("MonsterAttack");
             if(Random.Range(0f, 1f) <= _CriticalProbability)
             {
-                Player.Instance.Hit(this, Random.Range(_MinCriAttackPower, _MaxCriAttackPower + 1), true);
+                Player.Instance.Hit(Random.Range(_MinCriAttackPower, _MaxCriAttackPower + 1), true);
             }
             else
             {
-                Player.Instance.Hit(this, Random.Range(_MinAttackPower, _MaxAttackPower + 1), false);
+                Player.Instance.Hit(Random.Range(_MinAttackPower, _MaxAttackPower + 1), false);
             }
         }
     }
@@ -262,6 +269,7 @@ public class Monster : MonoBehaviour//Unit
         MonsterManager.Instance.RemoveMonsterFromList(this);
         Cleanup();
         Destroy(gameObject);
+        Player.Instance.AddKillCount();
         //this.gameObject.SetActive(false);
     }
 
@@ -423,5 +431,21 @@ public class Monster : MonoBehaviour//Unit
         _CachedTransform.position = _Pos.vector;
 
         CurTile.SetState(TileState.MONSTER, false);
+    }
+
+    public void SetColor(float rgb)
+    {
+        if(rgb > 0f)
+        {
+            var color = new Color(rgb, rgb, rgb, 1f);
+            _SprRenderer.color = color;
+            _HPBar.gameObject.SetActive(true);
+        }
+        else
+        {
+            var color = new Color(rgb, rgb, rgb, 0f);
+            _SprRenderer.color = color;
+            _HPBar.gameObject.SetActive(false);
+        }
     }
 }

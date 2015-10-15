@@ -19,7 +19,7 @@ public class CastleMapGenerator : MapGenerator
     //생성된 방을 한데 모아두기 위한 용도.
     public Transform _RoomsTransform;
 
-    public int radius;
+    public uint radius;
 
     public int _MinRoomNum;
     public int _MaxRoomNum;
@@ -88,14 +88,15 @@ public class CastleMapGenerator : MapGenerator
 
         _MST = GetMST(_MainRoomList);
 
+        CreateExit();
+
         CreateCorridors(_MST);
 
         CreateMonsters(_MainRoomList);
 
-        callback();
-
         CreateFoods(_MainRoomList);
 
+        callback();
     }
 
     //랜덤한 범위내에서 방을 생성
@@ -307,7 +308,6 @@ public class CastleMapGenerator : MapGenerator
                 endPosArr[2] = endPos - gap;
 
                 //먼저 엉뚱한 방과 연결되진 않는지 검사하고 그렇다면 다시 새로운 선을 긋는다.
-
                 bool wrongWay = false;
                 for (int i = 0; i < 3; ++i)
                 {
@@ -330,25 +330,21 @@ public class CastleMapGenerator : MapGenerator
             endList.AddRange(endPosArr);
 #endif
 
-            while (true)
+            for(int i = 0; i < 3; ++i)
             {
-                bool clear = true;
+                var hitInfoArr = Physics2D.LinecastAll(startPosArr[i], endPosArr[i], 1 << LayerMask.NameToLayer("Tile"));
 
-                for (int i = 0; i < 3; ++i)
+                foreach(var hitInfo in hitInfoArr)
                 {
-                    var hitInfo = Physics2D.Linecast(startPosArr[i], endPosArr[i], 1 << LayerMask.NameToLayer("Tile"));
-                    if (hitInfo.collider != null)
+                    if(hitInfo.collider != null)
                     {
-                        clear = false;
                         var tile = hitInfo.collider.gameObject.GetComponent<Tile>();
-                        tile.SetState(TileState.GROUND);
-                        //tile.State = TileState.GROUND;
-                        //tile.Invalidate();
+
+                        if(tile.IsWall)
+                        {
+                            tile.SetState(TileState.GROUND);
+                        }
                     }
-                }
-                if(clear)
-                {
-                    break;
                 }
             }
         }
@@ -565,20 +561,44 @@ public class CastleMapGenerator : MapGenerator
         foreach (var room in roomList)
         {
             int roomFoodNum = Random.Range(_MinRoomFoodNum, _MaxRoomFoodNum + 1);
+
+            int tryCount = 0;
             for (int i = 0; i < roomFoodNum; ++i)
             {
+                if(tryCount > 1000)
+                {
+                    break;
+                }
+
                 var pos = room.GetGroundPosInRoom();
                 if (pos != null)
                 {
-                    if (FoodManager.Instance.GetFoodFromPos(pos.Value) != null)
+                    if (FoodManager.Instance.GetFoodByPos(pos.Value) != null)
                     {
                         i--;
+                        tryCount++;
                         continue;
                     }
                     var food = FoodManager.Instance.CreateFood();
                     food.Init(pos.Value);
                 }
             }
+        }
+    }
+
+    void CreateExit()
+    {
+        var pos = _BossRoom.GetGroundPosInRoom();
+
+        if (pos != null)
+        {
+            var tile = TileManager.Instance.GetTile(pos.Value);
+            tile.SetState(TileState.EXIT);
+        }
+        else
+        {
+            var tile = TileManager.Instance.GetTile(_BossRoom.GetRandomPosInRoom());
+            tile.SetState(TileState.MONSTER);
         }
     }
 
@@ -648,6 +668,18 @@ public class CastleMapGenerator : MapGenerator
         });
     }
 
+    public void Regenerate()
+    {
+        MonsterManager.Instance.Cleanup();
+        FoodManager.Instance.Cleanup();
+        Player.Instance.gameObject.SetActive(false);
+        Generate(() =>
+        {
+            Player.Instance.SetPosInStartRoom();
+            Player.Instance.gameObject.SetActive(true);
+        });
+    }
+
     void Cleanup()
     {
         if (_MainRoomList != null)
@@ -672,8 +704,10 @@ public class CastleMapGenerator : MapGenerator
         }
         _MST = null;
 
+#if DEBUG
         startList.Clear();
         endList.Clear();
+#endif
 
         _PlayerRoom = null;
         _BossRoom = null;

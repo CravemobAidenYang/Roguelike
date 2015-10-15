@@ -48,6 +48,8 @@ public class Food : MonoBehaviour
     {
         _CachedTransform = GetComponent<Transform>();
         _SprRenderer = GetComponent<SpriteRenderer>();
+        SetColor(0f);
+
     }
 
 	public void Init(Position pos)
@@ -71,4 +73,10 @@ public class Food : MonoBehaviour
 
         _CachedTransform.position = _Pos.vector;
     }
+
+    public void SetColor(float rgb)
+    {
+        _SprRenderer.color = new Color(rgb, rgb, rgb);
+    }
+
 }

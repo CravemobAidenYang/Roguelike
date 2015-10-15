@@ -54,4 +54,8 @@ public class TileSpriteManager : MonoBehaviour
         return _WallSprites[index];
     }
 
+    public Sprite GetExitSprite()
+    {
+        return _ExitSprite;
+    }
 }

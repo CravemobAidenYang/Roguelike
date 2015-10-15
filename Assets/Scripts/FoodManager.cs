@@ -67,7 +67,7 @@ public class FoodManager : MonoBehaviour
         _FoodList.Clear();
     }
 
-    public Food GetFoodFromPos(Position pos)
+    public Food GetFoodByPos(Position pos)
     {
         foreach(var food in _FoodList)
         {

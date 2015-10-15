@@ -8,9 +8,12 @@ public class GameManager : MonoBehaviour
     public TileManager _TileManagerPrefab;
     public Player _PlayerPrefab;
 
+    public UIRoot _UIRoot;
+
     public UIPanel _PauseMenu;
-    public UIPanel _GameOverMenu;
+    public GameOverMenu _GameOverMenu;
     public UIPanel _BeginPanel;
+    public UIPanel _GoToNextPanelPrefab;
 
     bool _IsStarted;
 
@@ -122,9 +125,9 @@ public class GameManager : MonoBehaviour
     {
         print("Save Button");
         TileManager.Instance.SaveTileMap();
-        Player.Instance.SavePlayerData();
-        MonsterManager.Instance.SaveMonsterData();
         FoodManager.Instance.SaveFoodData();
+        MonsterManager.Instance.SaveMonsterData();
+        Player.Instance.SavePlayerData();
 
         _IsPause = false;
         _PauseMenu.gameObject.SetActive(false);
@@ -135,9 +138,14 @@ public class GameManager : MonoBehaviour
     {
         print("Load Button");
         TileManager.Instance.LoadTileMap();
-        Player.Instance.LoadPlayerData();
-        MonsterManager.Instance.LoadMonsterData();
         FoodManager.Instance.LoadFoodData();
+        MonsterManager.Instance.LoadMonsterData();
+        Player.Instance.LoadPlayerData();
+
+        //몬스터와 푸드 정보가 필요하므로 모든 로드가 끝난 이곳에서 적용.
+        TileManager.Instance.SetVisitedTilesColor();
+        Player.Instance.CalcSight();
+
 
         _IsPause = false;
         _PauseMenu.gameObject.SetActive(false);
@@ -150,9 +158,10 @@ public class GameManager : MonoBehaviour
         Application.Quit();
     }
 
-    public void GameOver()
+    public void GameOver(int killCount, int traveledDungeonCount)
     {
         print("GameManager.GameOver");
+        _GameOverMenu.SetScoreText(killCount, traveledDungeonCount);
         _GameOverMenu.gameObject.SetActive(true);
     }
 
@@ -160,6 +169,12 @@ public class GameManager : MonoBehaviour
     {
         _GameOverMenu.gameObject.SetActive(false);
         CastleMapGenerator.Instance.Reset();
+    }
+
+    public void GoToNextDungeon()
+    {
+        CastleMapGenerator.Instance.Regenerate();
+        _IsStarted = true;
     }
 
     public void ShowBeginPanel()
@@ -173,6 +188,15 @@ public class GameManager : MonoBehaviour
         _IsStarted = true;
     }
 
+    public void ShowGoToNextPanel()
+    {
+        _IsStarted = false;
+        var goToNextPanel = Instantiate(_GoToNextPanelPrefab);
+
+        goToNextPanel.transform.SetParent(_UIRoot.transform, false);
+    }
+
+    //ngui콜백용
     public void StartGame()
     {
         _IsStarted = true;

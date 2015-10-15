@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 [System.Serializable]
 public class PlayerSaveData
@@ -11,12 +12,16 @@ public class PlayerSaveData
     public float criticalProbability;
     public int minCriAttackPower, maxCriAttackPower;
     public float speed;
+    public int killCount;
+    public int traveledDungeonCount;
 
     public float scaleX;
 
     public bool isDead;
 
-    public PlayerSaveData(Position pos, int maxHP, int hp, int minAttackPower, int maxAttackPower, float critical, int minCri, int maxCri, float speed, float scaleX, bool isDead)
+    public PlayerSaveData(Position pos, int maxHP, int hp,
+        int minAttackPower, int maxAttackPower, float critical, int minCri, int maxCri,
+        float speed, int killCount, int traveledDungeonCount, float scaleX, bool isDead)
     {
         this.pos = pos;
         this.maxHP = maxHP;
@@ -27,6 +32,8 @@ public class PlayerSaveData
         this.maxCriAttackPower = maxCri;
         this.criticalProbability = critical;
         this.speed = speed;
+        this.killCount = killCount;
+        this.traveledDungeonCount = traveledDungeonCount;
         this.scaleX = scaleX;
         this.isDead = isDead;
     }
@@ -41,10 +48,15 @@ public class Player : MonoBehaviour//Unit
     public UISlider _HPBarPrefab;
     UISlider _HPBar;
 
+    public int _Sight;
+
     public float _Speed;
 
     public int _MaxHP;
     int _HP;
+
+    int _KillCount;
+    int _TraveledDungeonCount;
 
     public int _MinAttackPower, _MaxAttackPower;
     public float _CriticalProbability;
@@ -118,10 +130,10 @@ public class Player : MonoBehaviour//Unit
         }
     }
 
-    void Start()
-    {
-        //_HPBar.transform.SetParent(GameManager.Instance.HUD.transform);
-    }
+    //void Start()
+    //{
+    //    //_HPBar.transform.SetParent(GameManager.Instance.HUD.transform);
+    //}
 
     IEnumerator Move_Internal(Vector3 targetPos)
     {
@@ -132,28 +144,33 @@ public class Player : MonoBehaviour//Unit
 
             if (_CachedTransform.position == targetPos)
             {
-                _IsProcessing = false;
                 print("Move Done");
-
-                var food = FoodManager.Instance.GetFoodFromPos(_Pos);
-                if(food != null)
-                {
-                    Eat(food);
-                }
-
-                MonsterManager.Instance.ProcessAllMonster();
+                _IsProcessing = false;
+                MoveDone();
                 break;
             }
             yield return null;
         }
     }
 
+    void MoveDone()
+    {
+        var food = FoodManager.Instance.GetFoodByPos(_Pos);
+        if (food != null)
+        {
+            Eat(food);
+        }
+
+        MonsterManager.Instance.ProcessAllMonster();
+
+        CalcSight();
+    }
+
     void Move(Position targetPos)
     {
         TileManager.Instance.GetTile(_Pos).SetState(TileState.GROUND, false);
-        //TileManager.Instance.GetTile(_Pos).State = TileState.GROUND;
         TileManager.Instance.GetTile(targetPos).SetState(TileState.PLAYER, false);
-        //TileManager.Instance.GetTile(targetPos).State = TileState.PLAYER;
+
         StartCoroutine(Move_Internal(targetPos.vector));
         _Pos = targetPos;
     }
@@ -185,7 +202,12 @@ public class Player : MonoBehaviour//Unit
         _IsAttack = false;
     }
 
-    public void Hit(Monster attacker, int damage, bool isCritical)
+    public void AddKillCount()
+    {
+        _KillCount++;
+    }
+
+    public void Hit(int damage, bool isCritical)
     {
         print("Player.Hit");
 
@@ -217,7 +239,7 @@ public class Player : MonoBehaviour//Unit
             if (_HP <= 0)
             {
                 _IsDead = true;
-                GameManager.Instance.GameOver();
+                GameManager.Instance.GameOver(_KillCount, _TraveledDungeonCount);
             }
         }
     }
@@ -262,6 +284,11 @@ public class Player : MonoBehaviour//Unit
         {
             Move(targetPos);
         }
+        else if(targetTile.IsExit)
+        {
+            GameManager.Instance.ShowGoToNextPanel();
+            _TraveledDungeonCount++;
+        }
         else if(targetTile.IsMonster)
         {
             Attack(MonsterManager.Instance.GetMonsterByPos(targetPos));
@@ -301,9 +328,6 @@ public class Player : MonoBehaviour//Unit
         if (!_IsProcessing)
         {
             CheckInput();
-            //다른 유닛 프로세싱...
-            //Monster.ProcessAllMonster();
-            //MonsterManager.Instance.ProcessAllMonster();
         }
     }
 
@@ -323,13 +347,17 @@ public class Player : MonoBehaviour//Unit
 
         _CachedMainCamTransform.position = newCamPos;
 
-
         var uiScreenPos = GetUIScreenPos(_CachedTransform.position + new Vector3(0f, 0.6f, 0f));
         _HPBar.transform.position = uiScreenPos;
+
+        CalcSight();
     }
 
     public void Init()
     {
+        _KillCount = 0;
+        _TraveledDungeonCount = 1;
+
         _HP = _MaxHP;
 
         InvalidateHPBar();
@@ -337,28 +365,43 @@ public class Player : MonoBehaviour//Unit
         _IsDead = false;
         _IsAttack = false;
 
-        //var tile = TileManager.Instance.GetRandomWalkableTile();
-        Position pos;
+        SetPosInStartRoom();
+
+        _IsProcessing = false;
+        _CachedMainCamTransform.position = new Vector3(_CachedTransform.position.x, _CachedTransform.position.y, _CachedMainCamTransform.position.z);
+
+        CalcSight();
+    }
+
+    public void SetPosInStartRoom()
+    {
+        Position? pos;
         Tile tile;
+
+        int tryCount = 0;
         do
         {
             pos = CastleMapGenerator.Instance.PlayerRoom.GetRandomPosInRoom();
-            tile = TileManager.Instance.GetTile(pos);
-        } while (!tile.IsGround);
+            tile = TileManager.Instance.GetTile(pos.Value);
 
-        _Pos = pos;
+            if (tryCount > 1000)
+            {
+                break;
+            }
+
+            tryCount++;
+        } while (!tile.IsGround || tile.HasFood);
+
+        _Pos = pos.Value;
         _CachedTransform.position = _Pos.vector;
         tile.SetState(TileState.PLAYER, false);
-        //tile.State = TileState.PLAYER;
-        _IsProcessing = false;
-        _CachedMainCamTransform.position = new Vector3(_CachedTransform.position.x, _CachedTransform.position.y, _CachedMainCamTransform.position.z);
     }
 
     public void SavePlayerData()
     {
         var data = new PlayerSaveData(_Pos, _MaxHP, _HP,
             _MinAttackPower, _MaxAttackPower, _CriticalProbability, _MinCriAttackPower, _MaxCriAttackPower,
-            _Speed, _CachedTransform.localScale.x, _IsDead);
+            _Speed, _KillCount, _TraveledDungeonCount, _CachedTransform.localScale.x, _IsDead);
 
         SaveLoad.SaveData("PlayerSaveData", data);
     }
@@ -375,6 +418,8 @@ public class Player : MonoBehaviour//Unit
         _MaxHP = data.maxHP;
         _HP = data.hp;
         _Speed = data.speed;
+        _KillCount = data.killCount;
+        _TraveledDungeonCount = data.traveledDungeonCount;
         _MinAttackPower = data.minAttackPower;
         _MaxAttackPower = data.maxAttackPower;
         _MinCriAttackPower = data.minCriAttackPower;
@@ -391,10 +436,147 @@ public class Player : MonoBehaviour//Unit
         _IsDead = data.isDead;
 
         TileManager.Instance.GetTile(_Pos).SetState(TileState.PLAYER, false);
+
     }
 
     void InvalidateHPBar()
     {
         _HPBar.value = (float)_HP / (float)_MaxHP;
+    }
+
+    public void CalcSight()
+    {
+        var sightMin = new Position(_Pos.x - _Sight, _Pos.y - _Sight);
+        var sightMax = new Position(_Pos.x + _Sight, _Pos.y + _Sight);
+
+        //타일을 모두 보이지 않음으로 설정.
+        TileManager.Instance.ResetTilesVisibleInfo();
+
+        //이미 봤던 영역은 먼저 색을 정해준다.
+        TileManager.Instance.SetVisitedTilesColor();
+
+        for (int x = sightMin.x; x <= sightMax.x; ++x)
+        {
+            for (int y = sightMin.y; y <= sightMax.y; ++y)
+            {
+                //사각형의 시야의 끝에 해당하는 타일들에 레이를 쏘고 타일의 색을 지정한다.. 
+                if (x == sightMin.x || x == sightMax.x ||
+                    y == sightMin.y || y == sightMax.y)
+                {
+                    ShootRayAndCheckVisible(x, y);
+                }
+            }
+        }
+
+        CalcSightPostProcess();
+    }
+
+    void CalcSightPostProcess()
+    {
+        var sightMin = new Position(_Pos.x - _Sight, _Pos.y - _Sight);
+        var sightMax = new Position(_Pos.x + _Sight, _Pos.y + _Sight);
+
+        for (int x = sightMin.x; x <= sightMax.x; ++x)
+        {
+            for (int y = sightMin.y; y <= sightMax.y; ++y)
+            {
+                //대각선 상에 위치한 타일들에 대해
+                if (x != _Pos.x && y != _Pos.y)
+                {
+                    var tile = TileManager.Instance.GetTile(new Position(x, y));
+
+                    if (tile == null)
+                    {
+                        continue;
+                    }
+
+                    float dist = (_CachedTransform.position - tile.Pos.vector3).sqrMagnitude;
+
+                    //원 영역안에 들어오면
+                    if (dist <= _Sight * _Sight)
+                    {
+                        if (tile.IsWall)
+                        {
+                            //대각선 방향을 구한다.
+                            int dirX = (_Pos.x < x) ? 1 : -1;
+                            int dirY = (_Pos.y < y) ? 1 : -1;
+
+                            //체크하고자 하는 타일로부터 구한 방향의 반대에 위치한 3개의 타일위치를 구한다.
+                            var posArr = new Position[3];
+                            posArr[0] = new Position(tile.Pos.x - dirX, tile.Pos.y - dirY);
+                            posArr[1] = new Position(tile.Pos.x, tile.Pos.y - dirY);
+                            posArr[2] = new Position(tile.Pos.x - dirX, tile.Pos.y);
+
+                            for (int i = 0; i < posArr.Length; ++i)
+                            {
+                                var checkTile = TileManager.Instance.GetTile(posArr[i]);
+
+                                if (!checkTile.IsWall && checkTile.IsVisble)
+                                {
+                                    float color = 1f - Mathf.Min(1f, dist / (_Sight * _Sight));
+                                    color = Mathf.Max(TileManager.Instance.VisitedTileColor, color);
+
+                                    SetVisibleTile(tile, color);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    void ShootRayAndCheckVisible(int x, int y)
+    {
+        var curPosVec = _CachedTransform.position;
+        curPosVec.z = 0;
+
+        var hitInfoArr = Physics2D.LinecastAll(curPosVec, new Vector2(x, y), 1 << LayerMask.NameToLayer("Tile"));
+
+        //레이에 충돌한 타일들을 순회하며
+        foreach (var hitInfo in hitInfoArr)
+        {
+            if (hitInfo.collider != null)
+            {
+                var tile = hitInfo.collider.gameObject.GetComponent<Tile>();
+
+                float dist = (curPosVec - tile.Pos.vector3).sqrMagnitude;
+
+                //원모양 시야에 들어왔을때
+                if (dist <= _Sight * _Sight)
+                {
+                    float color = 1f - Mathf.Min(1f, dist / (_Sight * _Sight));
+                    color = Mathf.Max(TileManager.Instance.VisitedTileColor, color);
+
+                    SetVisibleTile(tile, color);
+
+                    //벽인 경우 더이상 검사하지 않고 다음 레이로 넘어간다.
+                    if (tile.IsWall)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    //타일의 색을 지정하고 그 위의 몬스터와 푸드도 보일지 말지 결정
+    void SetVisibleTile(Tile tile, float rgb)
+    {
+        tile.SetColor(rgb);
+        tile.IsVisble = true;
+        tile.IsVisted = true;
+        //타일위에 있는 몬스터와 음식에도 같은 명암을 적용한다.
+        if (tile.IsMonster)
+        {
+            var monster = MonsterManager.Instance.GetMonsterByPos(tile.Pos);
+            monster.SetColor(rgb);
+        }
+        if (tile.HasFood)
+        {
+            var food = FoodManager.Instance.GetFoodByPos(tile.Pos);
+            food.SetColor(rgb);
+        }
     }
 }
